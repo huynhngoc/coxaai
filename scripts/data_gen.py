@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
 import tensorflow as tf
+import random
 
 
 base_path = 'P:/CoxaAI/preprocess_data/'
@@ -14,7 +15,7 @@ dfs = []
 for file in included_files:
     dfs.append(pd.read_csv(info_path + file))
 
-df = pd.concat(dfs)
+df = pd.concat(dfs).reset_index(drop=True)
 # df.to_csv(base_path + 'csv_train_info/Jan2024.csv', index_label='pid')
 
 
@@ -33,7 +34,6 @@ df['fold'] = fold_name
 
 # df.to_csv(base_path + 'csv_train_info/Jan2024_split.csv', index=False)
 
-
 df = pd.read_csv(base_path + 'csv_train_info/Jan2024_split.csv')
 
 
@@ -42,16 +42,21 @@ resize_shape = 800
 
 # create the dataset
 with h5py.File(h5_filename, 'w') as f:
-    for i in range(len(folds)):
+    for i in range(5):
         f.create_group(f'fold_{i}')
 
-for i, fold in enumerate(folds):
+random.seed(23)
+for i in range(5):
     print('writing fold', i)
     images = []
-    selected_df = df.iloc[fold]
-    real_diagnosis = df.diagnosis[fold].copy()
+    selected_indice = list(df[df.fold == i].index)
+    # shuffle the indice
+    random.shuffle(selected_indice)
+    selected_df = df.iloc[selected_indice]
+    real_diagnosis = selected_df.diagnosis.copy()
     target = real_diagnosis.copy()
     # A&B are normal
+    target[target <= 1] = 0
     target[target > 1] = 1
     for _, item in selected_df.iterrows():
         # year = int(item['year'])
@@ -70,10 +75,14 @@ for i, fold in enumerate(folds):
         f[f'fold_{i}'].create_dataset(
             'diagnosis', data=real_diagnosis, dtype='f4')
         f[f'fold_{i}'].create_dataset(
-            'patient_idx', data=df.pid[fold], dtype='i4')  # meta data for mapping
+            'patient_idx', data=selected_df.pid, dtype='i4')  # meta data for mapping
 
 with h5py.File(h5_filename, 'r') as f:
     for k in f.keys():
         print(k)
         for ds in f[k].keys():
             print('--', f[k][ds])
+        print('target', {int(k): v for k, v in zip(
+            *(np.unique(f[k]['target'][:], return_counts=True)))})
+        print('diagnosis', {int(k): v for k, v in zip(
+            *(np.unique(f[k]['diagnosis'][:], return_counts=True)))})

@@ -14,14 +14,13 @@
             "train_folds": [
                 0,
                 1,
-                2,
-                3
+                2
             ],
             "val_folds": [
-                4
+                3
             ],
             "test_folds": [
-                5
+                4
             ],
             "shuffle": true,
             "preprocessors": [
@@ -40,6 +39,11 @@
                 {
                     "class_name": "ClassImageAugmentation2D",
                     "config": {
+                        "rotation_range": 15,
+                        "flip_axis": [
+                            0,
+                            1
+                        ],
                         "zoom_range": [
                             0.8,
                             1.2
