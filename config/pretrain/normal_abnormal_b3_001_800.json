@@ -81,7 +81,7 @@
         "optimizer": {
             "class_name": "adam",
             "config": {
-                "learning_rate": 0.0005
+                "learning_rate": 0.001
             }
         },
         "metrics": [

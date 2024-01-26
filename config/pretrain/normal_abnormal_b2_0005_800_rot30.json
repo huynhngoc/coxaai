@@ -39,8 +39,8 @@
                 {
                     "class_name": "ClassImageAugmentation2D",
                     "config": {
-                        "rotation_range": 15,
-                        "flip_axis": [
+                        "rotation_range": 30,
+                        "flip_axis": [  
                             0,
                             1
                         ],
