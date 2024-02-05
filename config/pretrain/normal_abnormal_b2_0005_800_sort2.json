@@ -6,7 +6,7 @@
     "dataset_params": {
         "class_name": "H5Reader",
         "config": {
-            "filename": "/mnt/project/ngoc/CoxaAI/datasets/hips_800_sortering_2.h5",
+            "filename": "/mnt/project/ngoc/CoxaAI/datasets/hips_800_sort_2.h5",
             "batch_size": 8,
             "batch_cache": 8,
             "x_name": "image",
