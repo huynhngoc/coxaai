@@ -89,7 +89,7 @@
                 "class_name": "AUC"
             },
             {
-                "class_name": "BinaryCrossentropy"
+                "class_name": "CategoricalCrossentropy"
             },
             {
                 "class_name": "BinaryAccuracy"
