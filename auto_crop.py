@@ -740,10 +740,10 @@ if __name__ == '__main__':
     batch_size = 2
 
     # img_folder = os.path.join(base_folder, year_str, diagnosis_raw)
-    img_folder = 'P:/CoxaAI/Sortering 1/EE'
-    detection_path = 'P:/CoxaAI/preprocess_data/detection'
-    cropped_path = 'P:/CoxaAI/preprocess_data/cropped'
-    detection_info_folder = 'P:/CoxaAI/preprocess_data/csv_detection_info'
+    img_folder = 'P:/CoxaAI/Sortering 3/EE'
+    detection_path = 'P:/CoxaAI/preprocess_data/detection/sortering 3'
+    cropped_path = 'P:/CoxaAI/preprocess_data/cropped/sortering 3'
+    detection_info_folder = 'P:/CoxaAI/preprocess_data/csv_detection_info/sortering 3'
 
     # create folders
     if not os.path.exists(detection_path):
@@ -796,6 +796,8 @@ if __name__ == '__main__':
         img /= (imax - imin)
         img *= 255
         img = img[0]
+        if len(img.shape) == 3 and (img.shape[-1] == 3 or img.shape[-1] == 1):
+            img = img[..., 0]
         w, h = img.shape
         w_pad = w % min_size
         if w_pad > 0:
