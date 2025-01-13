@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --ntasks=1               # 1 core(CPU)
 #SBATCH --nodes=1                # Use 1 node
-#SBATCH --job-name=CoxaAI_pretrain   # sensible name for the job
+#SBATCH --job-name=CoxaAI_external   # sensible name for the job
 #SBATCH --mem=32G                 # Default memory per CPU is 3GB.
 #SBATCH --partition=gpu # Use the verysmallmem-partition for jobs requiring < 10 GB RAM.
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=1
 #SBATCH --mail-user=$USER@nmbu.no # Email me when job is done.
-#SBATCH --mail-type=FAIL
-#SBATCH --output=outputs/pretrain-%A.out
-#SBATCH --error=outputs/pretrain-%A.out
+#SBATCH --mail-type=ALL
+#SBATCH --output=outputs/external-%A.out
+#SBATCH --error=outputs/external-%A.out
 
 # If you would like to use more please adjust this.
 
@@ -20,11 +20,11 @@ module load singularity
 ## Code
 # If data files aren't copied, do so
 #!/bin/bash
-if [ $# -lt 3 ];
-    then
-    printf "Not enough arguments - %d\n" $#
-    exit 0
-    fi
+# if [ $# -lt 2 ];
+#     then
+#     printf "Not enough arguments - %d\n" $#
+#     exit 0
+#     fi
 
 # if [ ! -d "$TMPDIR/$USER/CubiAI" ]
 #     then
@@ -50,8 +50,7 @@ echo "Finished seting up files."
 nvidia-modprobe -u -c=0
 
 # Run experiment
-export MAX_SAVE_STEP_GB=0
-export ITER_PER_EPOCH=128
-export NUM_CPUS=4
+# export ITER_PER_EPOCH=200
+export NUM_CPUS=1
 export RAY_ROOT=$TMPDIR/$USER/ray
-singularity exec --nv deoxys.sif python experiment_binary.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ceheads/CoxaAI/pretrain/$2 --epochs $3 ${@:4}
+singularity exec --nv deoxys.sif python -u external_binary.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ceheads/CoxaAI/pretrain/$2 ${@:3}
