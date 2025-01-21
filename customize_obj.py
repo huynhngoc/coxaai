@@ -4,7 +4,7 @@ from deoxys.data.preprocessor import BasePreprocessor
 from deoxys.utils import deep_copy
 
 
-from tensorflow.keras.applications import efficientnet
+from tensorflow.keras.applications import efficientnet, efficientnet_v2
 from tensorflow.keras.layers import Dropout, Dense
 from tensorflow.keras.models import Model
 
@@ -24,7 +24,10 @@ class EfficientNetModelLoader(BaseModelLoader):
         'B4': efficientnet.EfficientNetB4,
         'B5': efficientnet.EfficientNetB5,
         'B6': efficientnet.EfficientNetB6,
-        'B7': efficientnet.EfficientNetB7
+        'B7': efficientnet.EfficientNetB7,
+        'S': efficientnet_v2.EfficientNetV2S,
+        'M': efficientnet_v2.EfficientNetV2M,
+        'L': efficientnet_v2.EfficientNetV2L,
     }
 
     def __init__(self, architecture, input_params):
