@@ -41,7 +41,6 @@ if __name__ == '__main__':
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-
     ous_h5 = '../segmentation/ous_test.h5'
     ous_csv = '../segmentation/ous_test.csv'
     maastro_h5 = '../segmentation/maastro_full.h5'
@@ -52,6 +51,7 @@ if __name__ == '__main__':
 
     if not os.path.exists(base_path + '/OUS'):
         os.makedirs(base_path + '/OUS')
+        
 
     ous_df = pd.read_csv(ous_csv)
 
