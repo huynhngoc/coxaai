@@ -47,8 +47,20 @@ if __name__ == '__main__':
 
     args, unknown = parser.parse_known_args()
 
-# Load the best model based on the chosen metric
+    ### Set base path for results based on experiment name
+    base_path = '../results/' + args.name
+    ### Load augmentation configuration file
+    with open(args.config, 'r') as file:
+        config = json.load(file)
+    ### Number of iterations
+    iter = args.iter
+    ### Load preprocessing configurations from JSON file
+    preprocessors = []
+    for pp_config in config:
+        preprocessors.append(preprocessor_from_config(pp_config))
 
+
+    # Load the best model based on the chosen metric
     exp = DefaultExperimentPipeline(
         log_base_path=args.log_folder,
         temp_base_path=args.temp_folder
@@ -57,7 +69,8 @@ if __name__ == '__main__':
         use_raw_log=False,
         mode=args.monitor_mode
     )
-# Get the trained model and test data generator
+
+    # Get the trained model and test data generator
     model = exp.model.model  # Extract the TensorFlow model from Deoxys pipeline
     dr = exp.model.data_reader  # Data reader (handles dataset loading)
     test_gen = dr.test_generator  # Test data generator
@@ -73,10 +86,13 @@ if __name__ == '__main__':
 
     # List to store TTA predictions
     tta_preds = []
+    i = 0 # Initialize batch index
 
     # Loop through test dataset batches
     for x, _ in test_gen.generate():
         print('Running TTA...')
+        print(f'Processing batch {i+1}/{steps_per_epoch}...')
+
         tta_pred = np.zeros((x.shape[0], 40))  # Placeholder for TTA predictions (40 trials per sample)
 
         # Apply Test-Time Augmentation (TTA) 40 times per sample
@@ -86,6 +102,12 @@ if __name__ == '__main__':
             tta_pred[..., trial] = model.predict(x_augmentation).flatten()  # Predict and store results
 
         tta_preds.append(tta_pred)  # Store predictions for this batch
+
+        i += 1 # increment batch index
+
+        # Stop early if we reach the end of the test set
+        if i == steps_per_epoch:
+            break
 
     # Convert results into a DataFrame
     df = pd.DataFrame({'pid': pids})  # Start with patient IDs
