@@ -37,8 +37,7 @@ export RAY_ROOT=$TMPDIR/ray
 # rm -rf $TMPDIR/ray/*
 # singularity exec --nv deoxys.sif python tta_JustTesing_Khanh.py $1 $Projects/ngoc/CoxaAI/perf/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
 
-fold_list=$3
-for fold in ${fold_list//,/ }
+
 do
     singularity exec --nv deoxys.sif python tta_JustTesing_Khanh.py \
     $1 \
