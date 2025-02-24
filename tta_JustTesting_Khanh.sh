@@ -5,7 +5,7 @@
 #SBATCH --mem=32G                 # Default memory per CPU is 3GB.
 #SBATCH --partition=gpu # Use the verysmallmem-partition for jobs requiring < 10 GB RAM.
 #SBATCH --gres=gpu:1
-#SBATCH --mail-user=khanh.phuong.le@nmbu.no, julie.tidemann.vestby@nmbu.no # Email me when job is done.
+#SBATCH --mail-user=khanh.phuong.le@nmbu.no # Email me when job is done.
 #SBATCH --mail-type=FAIL
 #SBATCH --output=outputs/interpret-%A.out
 #SBATCH --error=outputs/interpret-%A.out
