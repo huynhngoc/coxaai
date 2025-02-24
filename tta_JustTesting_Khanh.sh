@@ -39,7 +39,7 @@ export RAY_ROOT=$TMPDIR/ray
 
 
 
-singularity exec --nv deoxys.sif python tta_JustTesing_Khanh.py \
+singularity exec --nv deoxys.sif python tta_JustTesting_Khanh.py \
 $1 \
 $PROJECTS/ngoc/CoxaAI/perf/$2 \
 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 \
