@@ -39,5 +39,5 @@ export RAY_ROOT=$TMPDIR/ray
 
 
 
-singularity exec --nv deoxys.sif python tta_JustTesting_Khanh.py $1 $PROJECTS/ngoc/CoxaAI/perf/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 ${@:3}
+singularity exec --nv deoxys.sif python tta_JustTesting_Khanh.py $1 $PROJECTS/ngoc/CoxaAI/perf/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
  
