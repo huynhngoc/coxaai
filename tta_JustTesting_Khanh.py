@@ -26,7 +26,9 @@ if __name__ == '__main__':
     
     ## Parse command line arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument("config")
     parser.add_argument("name")
+    parser.add_argument("--iter", default=1, type=int)
     ### Path to dataset
     parser.add_argument("dataset_file")
     ### Path where results will be saved
