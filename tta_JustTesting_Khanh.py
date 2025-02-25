@@ -43,7 +43,7 @@ def augment_image(image, preprocessors):
     Preprocessors are loaded from the config file.
     """
     for preprocessor in preprocessors:
-        image, = preprocessor.transform(image, None)
+        image = preprocessor.transform(image, None)
     return image
 
 # Main function
@@ -128,8 +128,8 @@ if __name__ == '__main__':
         for trial in range(40):
             print(f'Trial {trial+1}/40')
             x_augmentation = augment_image(x, preprocessors)  # Apply augmentation to input batch
-            # print(x_augmentation.shape, x_augmentation[0].shape)
-            tta_pred[..., trial] = model.predict(x_augmentation).flatten()  # Predict and store results
+            print(x_augmentation, x_augmentation[0].shape)
+            tta_pred[..., trial] = model.predict(x_augmentation[0]).flatten()  # Predict and store results
 
         tta_preds.append(tta_pred)  # Store predictions for this batch
 
