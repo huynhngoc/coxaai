@@ -7,6 +7,34 @@ import pandas as pd
 from deoxys.data.preprocessor import preprocessor_from_config
 import json
 
+from sklearn import metrics
+from sklearn.metrics import matthews_corrcoef
+
+
+class Matthews_corrcoef_scorer:
+    def __call__(self, *args, **kwargs):
+        return matthews_corrcoef(*args, **kwargs)
+
+    def _score_func(self, *args, **kwargs):
+        return matthews_corrcoef(*args, **kwargs)
+
+
+try:
+    metrics.SCORERS['mcc'] = Matthews_corrcoef_scorer()
+except:
+    pass
+try:
+    metrics._scorer._SCORERS['mcc'] = Matthews_corrcoef_scorer()
+except:
+    pass
+
+
+def metric_avg_score(res_df, postprocessor):
+    res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0',
+                                  'BinaryAccuracy', 'mcc']].mean(axis=1)
+
+    return res_df
+
 # Create a function to augment the image
 def augment_image(image, preprocessors):
     """
@@ -27,12 +55,8 @@ if __name__ == '__main__':
     ## Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("config")
-    parser.add_argument("name")
-    parser.add_argument("--iter", default=1, type=int)
-    ### Path to dataset
-    parser.add_argument("dataset_file")
-    ### Path where results will be saved
     parser.add_argument("log_folder")
+    parser.add_argument("--iter", default=40, type=int)
     ### Temporary folder for intermediate results
     parser.add_argument("--temp_folder", default='', type=str)
     ### Model saving frequency
@@ -51,7 +75,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     ### Set base path for results based on experiment name
-    base_path = '../results/' + args.name
+    base_path = '../results/' + args.log_folder.split('/')[-1]
     ### Load augmentation configuration file
     with open(args.config, 'r') as file:
         config = json.load(file)
@@ -121,4 +145,4 @@ if __name__ == '__main__':
         df[f'tta_pred_{trial}'] = tta_preds[..., trial]  # Store each TTA trial result in a separate column
 
     # Save the final results as a CSV file
-    df.to_csv(args.log_folder + f'/tta_predicted_02.csv', index=False)
+    df.to_csv(args.log_folder + f'/tta_predicted.csv', index=False)
