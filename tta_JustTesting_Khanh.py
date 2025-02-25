@@ -95,7 +95,8 @@ if __name__ == '__main__':
     ).load_best_model(
         monitor=args.monitor,
         use_raw_log=False,
-        mode=args.monitor_mode
+        mode=args.monitor_mode,
+        custom_modifier_fn=metric_avg_score
     )
 
     # Get the trained model and test data generator
