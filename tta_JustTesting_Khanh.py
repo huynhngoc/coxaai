@@ -1,3 +1,4 @@
+import customize_obj
 import tensorflow as tf
 from deoxys.experiment import DefaultExperimentPipeline
 import argparse
