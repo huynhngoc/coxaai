@@ -7,8 +7,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mail-user=khanh.phuong.le@nmbu.no # Email me when job is done.
 #SBATCH --mail-type=FAIL
-#SBATCH --output=outputs/interpret-%A.out
-#SBATCH --error=outputs/interpret-%A.out
+#SBATCH --output=outputs/uncertainty-%A.out
+#SBATCH --error=outputs/uncertainty-%A.out
 
 # Load necessary modules
 module load singularity
