@@ -1,29 +1,15 @@
 import customize_obj
-# import h5py
-# from tensorflow.keras.callbacks import EarlyStopping
 import tensorflow as tf
 from deoxys.experiment import DefaultExperimentPipeline
-# from deoxys.model.callbacks import PredictionCheckpoint
-# from deoxys.utils import read_file
 import argparse
-# import os
-from deoxys.utils import read_csv
 import numpy as np
-# from pathlib import Path
-# from comet_ml import Experiment as CometEx
+import h5py
+import pandas as pd
+from deoxys.data.preprocessor import preprocessor_from_config
+import json
+
 from sklearn import metrics
 from sklearn.metrics import matthews_corrcoef
-import h5py
-import gc
-import pandas as pd
-
-
-class Matthews_corrcoef_scorer:
-    def __call__(self, *args, **kwargs):
-        return matthews_corrcoef(*args, **kwargs)
-
-    def _score_func(self, *args, **kwargs):
-        return matthews_corrcoef(*args, **kwargs)
 
 
 class Matthews_corrcoef_scorer:
@@ -50,56 +36,59 @@ def metric_avg_score(res_df, postprocessor):
 
     return res_df
 
+# Create a function to augment the image
+def augment_image(image, preprocessors):
+    """
+    Augment the image using the preprocessors. 
+    Preprocessors are loaded from the config file.
+    """
+    for preprocessor in preprocessors:
+        image = preprocessor.transform(image, None)
+    return image
 
+# Main function
 if __name__ == '__main__':
+    ## Check if GPU is available
     gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
         raise RuntimeError("GPU Unavailable")
-
+    
+    ## Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset_file")
+    parser.add_argument("config")
     parser.add_argument("log_folder")
+    parser.add_argument("--iter", default=40, type=int)
+    ### Temporary folder for intermediate results
     parser.add_argument("--temp_folder", default='', type=str)
+    ### Model saving frequency
     parser.add_argument("--model_checkpoint_period", default=1, type=int)
+    ### Prediction saving frequency
     parser.add_argument("--prediction_checkpoint_period", default=1, type=int)
+    ### Metadata identifier (e.g, patient ID)
     parser.add_argument("--meta", default='patient_idx', type=str)
-    parser.add_argument(
-        "--monitor", default='avg_score', type=str)
-    parser.add_argument(
-        "--monitor_mode", default='max', type=str)
+    ### Metric to monitor for best model selection
+    parser.add_argument("--monitor", default='avg_score', type=str)
+    ### Maximize the monitered metrics
+    parser.add_argument("--monitor_mode", default='max', type=str)
+    ### Optional GPU memory limit
     parser.add_argument("--memory_limit", default=0, type=int)
 
     args, unknown = parser.parse_known_args()
 
-    if args.memory_limit:
-        # Restrict TensorFlow to only allocate X-GB of memory on the first GPU
-        try:
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(
-                    memory_limit=1024 * args.memory_limit)])
-            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(
-                logical_gpus), "Logical GPUs")
-        except RuntimeError as e:
-            # Virtual devices must be set before GPUs have been initialized
-            print(e)
+    ### Set base path for results based on experiment name
+    base_path = '../results/' + args.log_folder.split('/')[-1]
+    ### Load augmentation configuration file
+    with open(args.config, 'r') as file:
+        config = json.load(file)
+    ### Number of iterations
+    iter = args.iter
+    ### Load preprocessing configurations from JSON file
+    preprocessors = []
+    for pp_config in config:
+        preprocessors.append(preprocessor_from_config(pp_config))
 
-    if '2d' in args.log_folder:
-        meta = args.meta
-    else:
-        meta = args.meta.split(',')[0]
 
-    print('external config from', args.dataset_file,
-          'and explaining on models in', args.log_folder)
-    print('Unprocesssed prediction are saved to', args.temp_folder)
-
-    def binarize(targets, predictions):
-        return targets, (predictions > 0.5).astype(targets.dtype)
-
-    def flip(targets, predictions):
-        return 1 - targets, 1 - (predictions > 0.5).astype(targets.dtype)
-
+    # Load the best model based on the chosen metric
     exp = DefaultExperimentPipeline(
         log_base_path=args.log_folder,
         temp_base_path=args.temp_folder
@@ -110,59 +99,53 @@ if __name__ == '__main__':
         custom_modifier_fn=metric_avg_score
     )
 
-    seed = 1
-    model = exp.model.model
-    dr = exp.model.data_reader
+    # Get the trained model and test data generator
+    model = exp.model.model  # Extract the TensorFlow model from Deoxys pipeline
+    dr = exp.model.data_reader  # Data reader (handles dataset loading)
+    test_gen = dr.test_generator  # Test data generator
+    steps_per_epoch = test_gen.total_batch  # Total number of batches in the test set
+    batch_size = test_gen.batch_size  # Batch size used during testing
 
-    test_gen = dr.test_generator
-    steps_per_epoch = test_gen.total_batch
-    batch_size = test_gen.batch_size
-    # pids
+    # Load patient IDs from the dataset
     pids = []
     with h5py.File(exp.post_processors.dataset_filename) as f:
         for fold in test_gen.folds:
-            pids.append(f[fold][meta][:])
-    pids = np.concatenate(pids)
+            pids.append(f[fold][args.meta][:])  # Extract patient IDs from each test fold
+    pids = np.concatenate(pids)  # Combine IDs from all folds
 
-    with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'w') as f:
-        print('created file', args.log_folder + f'/test_vargrad_02.h5')
-        f.create_dataset(meta, data=pids)
-        f.create_dataset('vargrad', shape=(len(pids), 256, 256))
-    data_gen = test_gen.generate()
-    i = 0
-    sub_idx = 0
-    mc_preds = []
+    # List to store TTA predictions
     tta_preds = []
-    for x, _ in data_gen:
-        print('MC results ....')
-        tf.random.set_seed(seed)
-        mc_pred = model(x).numpy().flatten()
-        mc_preds.append(mc_pred)
-        print(f'Batch {i}/{steps_per_epoch}')
-        np_random_gen = np.random.default_rng(1123)
-        new_shape = list(x.shape) + [40]
-        var_grad = np.zeros(new_shape)
+    i = 0 # Initialize batch index
+
+    # Loop through test dataset batches
+    for x, _ in test_gen.generate():
+        print('Running TTA...')
+        print(f'Processing batch {i+1}/{steps_per_epoch}...')
+
+        tta_pred = np.zeros((x.shape[0], 40))  # Placeholder for TTA predictions (40 trials per sample)
+
+        # Apply Test-Time Augmentation (TTA) 40 times per sample
         for trial in range(40):
             print(f'Trial {trial+1}/40')
-            noise = np_random_gen.normal(
-                loc=0.0, scale=.02, size=x.shape[:-1]) * 255
-            x_noised = x + np.stack([noise]*3, axis=-1)
-            x_noised = tf.Variable(x_noised)
-            tf.random.set_seed(seed)
-            with tf.GradientTape() as tape:
-                tape.watch(x_noised)
-                pred = model(x_noised)
+            x_augmentation = augment_image(x, preprocessors)  # Apply augmentation to input batch
+            tta_pred[..., trial] = model.predict(x_augmentation[0]).flatten()  # Predict and store results
 
-            grads = tape.gradient(pred, x_noised).numpy()
-            var_grad[..., trial] = grads
+        tta_preds.append(tta_pred)  # Store predictions for this batch
 
-        final_var_grad = (var_grad.std(axis=-1)**2).mean(axis=-1)
-        with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'a') as f:
-            f['vargrad'][sub_idx:sub_idx + len(x)] = final_var_grad
-        sub_idx += x.shape[0]
-        i += 1
-        gc.collect()
+        i += 1 # increment batch index
+
+        # Stop early if we reach the end of the test set
         if i == steps_per_epoch:
             break
 
-    df = pd.DataFrame({'pid': pids, 'predicted': np.concatenate(mc_preds)})
+    # Convert results into a DataFrame
+    df = pd.DataFrame({'pid': pids})  # Start with patient IDs
+    tta_preds = np.concatenate(tta_preds)  # Combine predictions across batches
+
+    # Add TTA predictions to the DataFrame
+    for trial in range(40):
+        df[f'tta_pred_{trial}'] = tta_preds[..., trial]  # Store each TTA trial result in a separate column
+
+    # Save the final results as a CSV file
+    df.to_csv(args.log_folder + f'/tta_predicted.csv', index=False)
+    
