@@ -36,16 +36,6 @@ def metric_avg_score(res_df, postprocessor):
 
     return res_df
 
-# Create a function to augment the image
-def augment_image(image, preprocessors):
-    """
-    Augment the image using the preprocessors. 
-    Preprocessors are loaded from the config file.
-    """
-    for preprocessor in preprocessors:
-        image = preprocessor.transform(image, None)
-    return image
-
 # Main function
 if __name__ == '__main__':
     ## Check if GPU is available
@@ -127,8 +117,6 @@ if __name__ == '__main__':
         # Apply Test-Time Augmentation (TTA) 40 times per sample
         for trial in range(40):
             print(f'Trial {trial+1}/40')
-            x_augmentation = augment_image(x, preprocessors)  # Apply augmentation to input batch
-            tta_pred[..., trial] = model.predict(x_augmentation[0]).flatten()  # Predict and store results
 
         tta_preds.append(tta_pred)  # Store predictions for this batch
 
@@ -148,4 +136,3 @@ if __name__ == '__main__':
 
     # Save the final results as a CSV file
     df.to_csv(args.log_folder + f'/tta_predicted.csv', index=False)
-    
