@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --ntasks=1               # 1 core(CPU)
 #SBATCH --nodes=1                # Use 1 node
-#SBATCH --job-name=tta_uncertainty   # sensible name for the job
+#SBATCH --job-name=CoxaAI_interpretability   # sensible name for the job
 #SBATCH --mem=32G                 # Default memory per CPU is 3GB.
 #SBATCH --partition=gpu # Use the verysmallmem-partition for jobs requiring < 10 GB RAM.
 #SBATCH --gres=gpu:1
@@ -38,6 +38,4 @@ export RAY_ROOT=$TMPDIR/ray
 # singularity exec --nv deoxys.sif python tta_JustTesing_Khanh.py $1 $Projects/ngoc/CoxaAI/perf/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
 
 
-singularity exec --nv deoxys.sif python interpretability_vargrad.py $1 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1
-
-# singularity exec --nv deoxys.sif python interpretability_vargrad.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
+singularity exec --nv deoxys.sif python interpretability_vargrad.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}

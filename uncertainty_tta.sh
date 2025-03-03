@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --ntasks=1               # 1 core(CPU)
 #SBATCH --nodes=1                # Use 1 node
-#SBATCH --job-name=tta_uncertainty   # sensible name for the job
+#SBATCH --job-name=CoxaAI_uncertainty   # sensible name for the job
 #SBATCH --mem=32G                 # Default memory per CPU is 3GB.
 #SBATCH --partition=gpu # Use the verysmallmem-partition for jobs requiring < 10 GB RAM.
 #SBATCH --gres=gpu:1
