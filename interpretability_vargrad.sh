@@ -16,7 +16,7 @@ module load singularity
 ## Code
 # If data files aren't copied, do so
 #!/bin/bash
-if [ $# -lt 2 ];
+if [ $# -lt 1 ];
     then
     printf "Not enough arguments - %d\n" $#
     exit 0
@@ -38,5 +38,6 @@ export RAY_ROOT=$TMPDIR/ray
 # singularity exec --nv deoxys.sif python tta_JustTesing_Khanh.py $1 $Projects/ngoc/CoxaAI/perf/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
 
 
+singularity exec --nv deoxys.sif python interpretability_vargrad.py $1 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1
 
-singularity exec --nv deoxys.sif python interpretability_vargrad.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
+# singularity exec --nv deoxys.sif python interpretability_vargrad.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
