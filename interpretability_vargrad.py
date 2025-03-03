@@ -46,7 +46,6 @@ if __name__ == '__main__':
     
     ## Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("config")
     parser.add_argument("log_folder")
     parser.add_argument("--iter", default=40, type=int)
     ### Temporary folder for intermediate results
