@@ -107,7 +107,7 @@ if __name__ == '__main__':
     with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'w') as f:
         print('created file', args.log_folder + f'/test_vargrad_02.h5')
         f.create_dataset(meta, data=pids)
-        f.create_dataset('vargrad', shape=(len(pids), 256, 256))
+        f.create_dataset('vargrad', shape=(len(pids), 800, 800))
 
     
     i = 0 # Initialize batch index
