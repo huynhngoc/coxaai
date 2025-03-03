@@ -7,6 +7,7 @@ import h5py
 import pandas as pd
 from deoxys.data.preprocessor import preprocessor_from_config
 import json
+import gc
 
 from sklearn import metrics
 from sklearn.metrics import matthews_corrcoef
@@ -67,15 +68,13 @@ if __name__ == '__main__':
 
     ### Set base path for results based on experiment name
     base_path = '../results/' + args.log_folder.split('/')[-1]
-    ### Load augmentation configuration file
-    with open(args.config, 'r') as file:
-        config = json.load(file)
     ### Number of iterations
     iter = args.iter
-    ### Load preprocessing configurations from JSON file
-    preprocessors = []
-    for pp_config in config:
-        preprocessors.append(preprocessor_from_config(pp_config))
+
+    if '2d' in args.log_folder:
+        meta = args.meta
+    else:
+        meta = args.meta.split(',')[0]
 
 
     # Load the best model based on the chosen metric
@@ -89,6 +88,7 @@ if __name__ == '__main__':
         custom_modifier_fn=metric_avg_score
     )
 
+    seed = 1
     # Get the trained model and test data generator
     model = exp.model.model  # Extract the TensorFlow model from Deoxys pipeline
     dr = exp.model.data_reader  # Data reader (handles dataset loading)
@@ -100,39 +100,57 @@ if __name__ == '__main__':
     pids = []
     with h5py.File(exp.post_processors.dataset_filename) as f:
         for fold in test_gen.folds:
-            pids.append(f[fold][args.meta][:])  # Extract patient IDs from each test fold
+            pids.append(f[fold][meta][:])  # Extract patient IDs from each test fold
     pids = np.concatenate(pids)  # Combine IDs from all folds
 
-    # List to store TTA predictions
-    tta_preds = []
+
+    with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'w') as f:
+        print('created file', args.log_folder + f'/test_vargrad_02.h5')
+        f.create_dataset(meta, data=pids)
+        f.create_dataset('vargrad', shape=(len(pids), 256, 256))
+
+    
     i = 0 # Initialize batch index
+    sub_idx = 0
+    mc_preds = []
 
     # Loop through test dataset batches
     for x, _ in test_gen.generate():
-        print('Running TTA...')
+        print('MC results ....')
+        tf.random.set_seed(seed)
+        mc_pred = model(x).numpy().flatten()
+        mc_preds.append(mc_pred)
+
         print(f'Processing batch {i+1}/{steps_per_epoch}...')
 
-        tta_pred = np.zeros((x.shape[0], 40))  # Placeholder for TTA predictions (40 trials per sample)
+        np_random_gen = np.random.default_rng(1123)
+        new_shape = list(x.shape) + [40]
+        var_grad = np.zeros(new_shape)
 
         # Apply Test-Time Augmentation (TTA) 40 times per sample
         for trial in range(40):
             print(f'Trial {trial+1}/40')
+            noise = np_random_gen.normal(
+                loc=0.0, scale=.02, size=x.shape[:-1]) * 255
+            x_noised = x + np.stack([noise]*3, axis=-1)
+            x_noised = tf.Variable(x_noised)
+            tf.random.set_seed(seed)
+            with tf.GradientTape() as tape:
+                tape.watch(x_noised)
+                pred = model(x_noised)
 
-        tta_preds.append(tta_pred)  # Store predictions for this batch
+            grads = tape.gradient(pred, x_noised).numpy()
+            var_grad[..., trial] = grads
 
-        i += 1 # increment batch index
+
+        final_var_grad = (var_grad.std(axis=-1)**2).mean(axis=-1)
+        with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'a') as f:
+            f['vargrad'][sub_idx:sub_idx + len(x)] = final_var_grad
+        sub_idx += x.shape[0]
+        i += 1
+        gc.collect()
 
         # Stop early if we reach the end of the test set
         if i == steps_per_epoch:
             break
 
-    # Convert results into a DataFrame
-    df = pd.DataFrame({'pid': pids})  # Start with patient IDs
-    tta_preds = np.concatenate(tta_preds)  # Combine predictions across batches
-
-    # Add TTA predictions to the DataFrame
-    for trial in range(40):
-        df[f'tta_pred_{trial}'] = tta_preds[..., trial]  # Store each TTA trial result in a separate column
-
-    # Save the final results as a CSV file
-    df.to_csv(args.log_folder + f'/tta_predicted.csv', index=False)
