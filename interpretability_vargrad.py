@@ -76,6 +76,7 @@ if __name__ == '__main__':
     else:
         meta = args.meta.split(',')[0]
 
+    print(f"log_folder: {args.log_folder}")
 
     # Load the best model based on the chosen metric
     exp = DefaultExperimentPipeline(
