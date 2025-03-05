@@ -104,8 +104,8 @@ if __name__ == '__main__':
     pids = np.concatenate(pids)  # Combine IDs from all folds
 
 
-    with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'w') as f:
-        print('created file', args.log_folder + f'/test_vargrad_02.h5')
+    with h5py.File(args.log_folder + f'/test_vargrad_05.h5', 'w') as f:
+        print('created file', args.log_folder + f'/test_vargrad_05.h5')
         f.create_dataset(meta, data=pids)
         f.create_dataset('vargrad', shape=(len(pids), 800, 800))
 
@@ -131,7 +131,7 @@ if __name__ == '__main__':
         for trial in range(40):
             print(f'Trial {trial+1}/40')
             noise = np_random_gen.normal(
-                loc=0.0, scale=.02, size=x.shape[:-1]) * 255
+                loc=0.0, scale=0.5, size=x.shape[:-1]) * 255
             x_noised = x + np.stack([noise]*3, axis=-1)
             x_noised = tf.Variable(x_noised)
             tf.random.set_seed(seed)
@@ -144,7 +144,7 @@ if __name__ == '__main__':
 
 
         final_var_grad = (var_grad.std(axis=-1)**2).mean(axis=-1)
-        with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'a') as f:
+        with h5py.File(args.log_folder + f'/test_vargrad_05.h5', 'a') as f:
             f['vargrad'][sub_idx:sub_idx + len(x)] = final_var_grad
         sub_idx += x.shape[0]
         i += 1
