@@ -127,7 +127,7 @@ if __name__ == '__main__':
         new_shape = list(x.shape) + [40]
         var_grad = np.zeros(new_shape)
 
-        # Apply Test-Time Augmentation (TTA) 40 times per sample
+        # Generate 40 noisy samples for each image in the batch
         for trial in range(40):
             print(f'Trial {trial+1}/40')
             noise = np_random_gen.normal(
