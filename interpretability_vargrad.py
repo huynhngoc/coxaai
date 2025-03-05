@@ -131,7 +131,7 @@ if __name__ == '__main__':
         for trial in range(40):
             print(f'Trial {trial+1}/40')
             noise = np_random_gen.normal(
-                loc=0.0, scale=0.5, size=x.shape[:-1]) * 255
+                loc=0.0, scale=.05, size=x.shape[:-1]) * 255
             x_noised = x + np.stack([noise]*3, axis=-1)
             x_noised = tf.Variable(x_noised)
             tf.random.set_seed(seed)
