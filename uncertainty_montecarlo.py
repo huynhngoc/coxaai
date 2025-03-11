@@ -12,6 +12,7 @@ import argparse
 import os
 import h5py
 import pandas as pd
+from deoxys.experiment import DefaultExperimentPipeline
 
 
 @custom_layer
@@ -25,80 +26,75 @@ if __name__ == '__main__':
     if not gpus:
         raise RuntimeError("GPU Unavailable")
 
+# Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("log_folder")
-    parser.add_argument("name")
-    parser.add_argument("source")
-    parser.add_argument("--iter", default=40, type=int)
-    parser.add_argument("--dropout_rate", default=10, type=int)
+    parser.add_argument("config")  # Model config file
+    parser.add_argument("log_folder") # Output folder
+    parser.add_argument("--iter", default=40, type=int) # Number of Monte Carlo iterations
+    parser.add_argument("--dropout_rate", default=0.1, type=float) # Dropout rate
+    parser.add_argument('--temp_folder', default ='', type = str)
+
 
     args, unknown = parser.parse_known_args()
 
-    base_path = args.source + '/' + args.name + '_' + str(args.dropout_rate)
-    iter = args.iter
+    # Set base path for results
+    base_path = f'../results/{args.log_folder.split('/')[-1]}'
+    os.makedirs(base_path, exist_ok=True)
 
-    print('Base_path:', args.source)
-    print('Original model:', args.name)
-    print('Dropout rate:', args.dropout_rate)
-    print('Iteration:', iter)
+    print(f"Saving Monte Carlo predictions to: {base_path}")
+    print(f"Running {args.iter} Monte Carlo trials with Dropout Rate {args.dropout_rate}...")
+    
+     # Load the trained model with Dropout
+    exp = DefaultExperimentPipeline(
+        log_base_path=args.log_folder,
+        temp_base_path=args.temp_folder
+    ).load_best_model()
 
-    if not os.path.exists(base_path):
-        os.makedirs(base_path)
+    model = exp.model.model  # Extract the TensorFlow model
 
-    ous_h5 = args.source + '/' + args.name + '/ous_test.h5'
-    ous_csv = args.source + '/' + args.name + '/ous_test.csv'
-    maastro_h5 = args.source + '/' + args.name + '/maastro_full.h5'
-    maastro_csv = args.source + '/' + args.name + '/maastro_full.csv'
-    model_file = args.source + '/' + args.name + '/model.h5'
+    # Ensure dropout rate is applied dynamically
+    for layer in model.layers:
+        if isinstance(layer, Dropout):
+            layer.rate = args.dropout_rate  # Apply the dropout rate
 
-    # NOTE: exclude patient 5 from MAASTRO set
-    # data = data[data.patient_idx != 5]
+    dr = exp.model.data_reader  # Data reader
+    test_gen = dr.test_generator  # Test data generator
+    steps_per_epoch = test_gen.total_batch  # Number of test batches
+    batch_size = test_gen.batch_size  # Batch size
 
-    dropout_model = model_from_full_config(
-        'config/uncertainty/' + args.name + '_r' + str(args.dropout_rate) + '.json', weights_file=model_file)
+    # Extract patient IDs from dataset
+    pids = []
+    with h5py.File(exp.post_processors.dataset_filename) as f:
+        for fold in test_gen.folds:
+            pids.append(f[fold]['patient_idx'][:])  # Extract patient IDs
+    pids = np.concatenate(pids)  # Combine IDs from all folds
 
-    if not os.path.exists(base_path + '/OUS'):
-        os.makedirs(base_path + '/OUS')
+    # Monte Carlo predictions storage
+    mc_preds = []
+    i = 0  # Batch index
 
-    ous_df = pd.read_csv(ous_csv)
+    for x, _ in test_gen.generate():
+        print(f"Processing batch {i+1}/{steps_per_epoch}...")
 
-    ###print('Working on OUS.....')
-    for pid in ous_df.patient_idx:
-        print('PID:', pid)
-        # Create a folder for each patient
-        if not os.path.exists(base_path + '/OUS/' + str(pid)): 
-            os.makedirs(base_path + '/OUS/' + str(pid))
-        # Open the h5 file and read the image
-        with h5py.File(ous_h5, 'r') as f:
-            # Read the image of the specific patient
-            images = f['x'][str(pid)][:][None, ...]
-        #preds = dropout_model.predict(images)
-        mc_preds = []
-        for i in range(iter):
-            preds = dropout_model.predict(images)
-            mc_preds.append(preds[0])  # assuming preds shape is (1, output_dim), take first element
-        mc_preds = np.array(mc_preds) # convert list to numpy array # shape: (iter, output_dim)
+        # Run Monte Carlo Dropout `args.iter` times
+        preds = np.array([model.predict(x) for _ in range(args.iter)])  # Shape: (iter, batch_size, num_classes)
+        mc_preds.append(preds)  # Append batch predictions
 
+        i += 1
+        if i == steps_per_epoch:
+            break  # Stop when all batches are processed
 
-        ###with open(base_path + '/OUS/' + str(pid) + f'/{iter:02d}.npy', 'wb') as f:
-        ###    np.save(f, preds[0])
+    # Convert Monte Carlo predictions into the same format as TTA
+    mc_preds = np.concatenate(mc_preds)  # Shape: (iter, total_samples, num_classes)
 
-        # Save all MC dropout predictions
-        with open(base_path + '/OUS/' + str(pid) + f'/mc_preds.npy', 'wb') as f:
-            np.save(f, mc_preds)
+    # Convert results into a DataFrame (same as TTA)
+    df = pd.DataFrame({'pid': pids})  # Start with patient IDs
+    for trial in range(args.iter):
+        df[f'mc_pred_{trial}'] = mc_preds[trial].flatten()  # Store each MC trial result in a separate column
 
-    if not os.path.exists(base_path + '/MAASTRO'):
-        os.makedirs(base_path + '/MAASTRO')
+    # Save the final results as a CSV file
+    df.to_csv(os.path.join(args.log_folder, f'mc_predicted.csv'), index=False)
 
-    maastro_df = pd.read_csv(maastro_csv)
-    print('Working on MAASTRO.....')
-    for pid in maastro_df.patient_idx:
-        print('PID:', pid)
-        if not os.path.exists(base_path + '/MAASTRO/' + str(pid)):
-            os.makedirs(base_path + '/MAASTRO/' + str(pid))
-        with h5py.File(maastro_h5, 'r') as f:
-            images = f['x'][str(pid)][:][None, ...]
-        preds = dropout_model.predict(images)
+    print(f"Monte Carlo predictions saved in {args.log_folder}/mc_predicted.csv")
 
-        with open(base_path + '/MAASTRO/' + str(pid) + f'/{iter:02d}.npy', 'wb') as f:
-            np.save(f, preds[0])
+ 
