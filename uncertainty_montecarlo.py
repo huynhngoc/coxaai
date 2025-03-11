@@ -26,9 +26,10 @@ if __name__ == '__main__':
         raise RuntimeError("GPU Unavailable")
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("log_folder")
     parser.add_argument("name")
     parser.add_argument("source")
-    parser.add_argument("--iter", default=1, type=int)
+    parser.add_argument("--iter", default=40, type=int)
     parser.add_argument("--dropout_rate", default=10, type=int)
 
     args, unknown = parser.parse_known_args()
@@ -61,17 +62,30 @@ if __name__ == '__main__':
 
     ous_df = pd.read_csv(ous_csv)
 
-    print('Working on OUS.....')
+    ###print('Working on OUS.....')
     for pid in ous_df.patient_idx:
         print('PID:', pid)
-        if not os.path.exists(base_path + '/OUS/' + str(pid)):
+        # Create a folder for each patient
+        if not os.path.exists(base_path + '/OUS/' + str(pid)): 
             os.makedirs(base_path + '/OUS/' + str(pid))
+        # Open the h5 file and read the image
         with h5py.File(ous_h5, 'r') as f:
+            # Read the image of the specific patient
             images = f['x'][str(pid)][:][None, ...]
-        preds = dropout_model.predict(images)
+        #preds = dropout_model.predict(images)
+        mc_preds = []
+        for i in range(iter):
+            preds = dropout_model.predict(images)
+            mc_preds.append(preds[0])  # assuming preds shape is (1, output_dim), take first element
+        mc_preds = np.array(mc_preds) # convert list to numpy array # shape: (iter, output_dim)
 
-        with open(base_path + '/OUS/' + str(pid) + f'/{iter:02d}.npy', 'wb') as f:
-            np.save(f, preds[0])
+
+        ###with open(base_path + '/OUS/' + str(pid) + f'/{iter:02d}.npy', 'wb') as f:
+        ###    np.save(f, preds[0])
+
+        # Save all MC dropout predictions
+        with open(base_path + '/OUS/' + str(pid) + f'/mc_preds.npy', 'wb') as f:
+            np.save(f, mc_preds)
 
     if not os.path.exists(base_path + '/MAASTRO'):
         os.makedirs(base_path + '/MAASTRO')
