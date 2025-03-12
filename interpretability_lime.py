@@ -1,33 +1,26 @@
 """
-Example of running a single experiment of unet in the head and neck data.
-The json config of the main model is 'examples/json/unet-sample-config.json'
-All experiment outputs are stored in '../../hn_perf/logs'.
-After running 3 epochs, the performance of the training process can be accessed
-as log file and perforamance plot.
-In addition, we can peek the result of 42 first images from prediction set.
+LIME Interpretability Script for Deoxys Pipeline
+
+This script runs LIME interpretability analysis on a trained model using Deoxys.
+It loads the best model from the provided `log_folder` and applies LIME to explain its predictions.
+
+The script follows the same structure as the VarGrad interpretability script.
 """
 
 import customize_obj
-# import h5py
-# from tensorflow.keras.callbacks import EarlyStopping
 import tensorflow as tf
 from deoxys.experiment import DefaultExperimentPipeline
-# from deoxys.model.callbacks import PredictionCheckpoint
-# from deoxys.utils import read_file
 import argparse
-# import os
-from deoxys.utils import read_csv
 import numpy as np
-# from pathlib import Path
-# from comet_ml import Experiment as CometEx
-from sklearn import metrics
-from sklearn.metrics import matthews_corrcoef
 import h5py
 import gc
 import pandas as pd
 from lime import lime_image
+from sklearn import metrics
+from sklearn.metrics import matthews_corrcoef
 
 
+# Custom scorer for Matthews Correlation Coefficient
 class Matthews_corrcoef_scorer:
     def __call__(self, *args, **kwargs):
         return matthews_corrcoef(*args, **kwargs)
@@ -36,14 +29,7 @@ class Matthews_corrcoef_scorer:
         return matthews_corrcoef(*args, **kwargs)
 
 
-class Matthews_corrcoef_scorer:
-    def __call__(self, *args, **kwargs):
-        return matthews_corrcoef(*args, **kwargs)
-
-    def _score_func(self, *args, **kwargs):
-        return matthews_corrcoef(*args, **kwargs)
-
-
+# Register MCC as a scoring metric in sklearn
 try:
     metrics.SCORERS['mcc'] = Matthews_corrcoef_scorer()
 except:
@@ -54,59 +40,51 @@ except:
     pass
 
 
+# Function to compute average score
 def metric_avg_score(res_df, postprocessor):
     res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0',
                                   'BinaryAccuracy', 'mcc']].mean(axis=1)
-
     return res_df
 
 
+# Main function
 if __name__ == '__main__':
+    ## Check if GPU is available
     gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
         raise RuntimeError("GPU Unavailable")
 
+    ## Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset_file")
-    parser.add_argument("log_folder")
+    parser.add_argument("log_folder")  # Removed dataset_file argument
     parser.add_argument("--temp_folder", default='', type=str)
     parser.add_argument("--model_checkpoint_period", default=1, type=int)
     parser.add_argument("--prediction_checkpoint_period", default=1, type=int)
     parser.add_argument("--meta", default='patient_idx,slice_idx', type=str)
-    parser.add_argument(
-        "--monitor", default='avg_score', type=str)
-    parser.add_argument(
-        "--monitor_mode", default='max', type=str)
+    parser.add_argument("--monitor", default='avg_score', type=str)
+    parser.add_argument("--monitor_mode", default='max', type=str)
     parser.add_argument("--memory_limit", default=0, type=int)
 
     args, unknown = parser.parse_known_args()
 
+    ## Set GPU memory limit if specified
     if args.memory_limit:
-        # Restrict TensorFlow to only allocate X-GB of memory on the first GPU
         try:
             tf.config.set_logical_device_configuration(
                 gpus[0],
                 [tf.config.LogicalDeviceConfiguration(
                     memory_limit=1024 * args.memory_limit)])
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(
-                logical_gpus), "Logical GPUs")
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
-            # Virtual devices must be set before GPUs have been initialized
-            print(e)
+            print(e)  # Virtual devices must be set before GPUs are initialized
 
     meta = args.meta.split(',')
 
-    print('external config from', args.dataset_file,
-          'and explaining on models in', args.log_folder)
-    print('Unprocesssed prediction are saved to', args.temp_folder)
+    print('Explaining models in', args.log_folder)
+    print('Unprocessed predictions are saved to', args.temp_folder)
 
-    def binarize(targets, predictions):
-        return targets, (predictions > 0.5).astype(targets.dtype)
-
-    def flip(targets, predictions):
-        return 1 - targets, 1 - (predictions > 0.5).astype(targets.dtype)
-
+    # Load best model from Deoxys pipeline
     exp = DefaultExperimentPipeline(
         log_base_path=args.log_folder,
         temp_base_path=args.temp_folder
@@ -118,16 +96,13 @@ if __name__ == '__main__':
     )
 
     seed = 1
-    model = exp.model.model
-    dr = exp.model.data_reader
+    model = exp.model.model  # Extract trained model
+    dr = exp.model.data_reader  # Load dataset via model
+    test_gen = dr.test_generator  # Test data generator
+    steps_per_epoch = test_gen.total_batch  # Total batches in the test set
 
-    test_gen = dr.test_generator
-    steps_per_epoch = test_gen.total_batch
-    batch_size = test_gen.batch_size
-    # pids
-    pids = []
-    # sids
-    sids = []
+    # Extract metadata (patient & slice indices)
+    pids, sids = [], []
     with h5py.File(exp.post_processors.dataset_filename) as f:
         for fold in test_gen.folds:
             pids.append(f[fold][meta[0]][:])
@@ -135,28 +110,38 @@ if __name__ == '__main__':
     pids = np.concatenate(pids)
     sids = np.concatenate(sids)
 
-    with h5py.File(args.log_folder + f'/test_lime.h5', 'w') as f:
-        print('created file', args.log_folder + f'/test_lime.h5')
+    # Create output HDF5 file for LIME results
+    lime_file_path = f'{args.log_folder}/test_lime.h5'
+    with h5py.File(lime_file_path, 'w') as f:
+        print('Created file', lime_file_path)
         f.create_dataset(meta[0], data=pids)
         f.create_dataset(meta[1], data=sids)
         f.create_dataset('lime', shape=(len(pids), 256, 256))
+
+    # Initialize LIME explainer
     data_gen = test_gen.generate()
-    i = 0
-    sub_idx = 0
     explainer = lime_image.LimeImageExplainer()
+    i, sub_idx = 0, 0
+
+    # Process test batches
     for x, _ in data_gen:
-        print(f'Batch {i}/{steps_per_epoch}')
+        print(f'Batch {i+1}/{steps_per_epoch}')
         for image in x:
-            explanation = explainer.explain_instance(image.astype('double'), model.predict, top_labels=1, hide_color=0, num_samples=1000)
-            ind =  explanation.top_labels[0]
-            #Map each explanation weight to the corresponding superpixel
+            explanation = explainer.explain_instance(
+                image.astype('double'), model.predict,
+                top_labels=1, hide_color=0, num_samples=1000)
+            
+            ind = explanation.top_labels[0]
             dict_heatmap = dict(explanation.local_exp[ind])
             lime_heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
 
-            with h5py.File(args.log_folder + f'/test_lime.h5', 'a') as f:
+            # Save LIME results to HDF5 file
+            with h5py.File(lime_file_path, 'a') as f:
                 f['lime'][sub_idx] = lime_heatmap
             sub_idx += 1
+
         i += 1
         gc.collect()
+
         if i == steps_per_epoch:
             break

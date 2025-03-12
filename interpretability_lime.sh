@@ -37,7 +37,4 @@ export RAY_ROOT=$TMPDIR/ray
 # rm -rf $TMPDIR/ray/*
 # singularity exec --nv deoxys.sif python tta_JustTesing_Khanh.py $1 $Projects/ngoc/CoxaAI/perf/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
 
-#singularity exec --nv deoxys.sif python interpretability_lime.py $PROJECTS/ngoc/CoxaAI/perf/pretrain/$1 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1 ${@:2}
-
-
-singularity exec --nv deoxys.sif python interpretability_lime.py $1 $PROJECTS/ngoc/CoxaAI/perf/pretrain/$2 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
+singularity exec --nv deoxys.sif python interpretability_lime.py $PROJECTS/ngoc/CoxaAI/perf/pretrain/$1 --temp_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$1 ${@:2}
