@@ -3,8 +3,6 @@ LIME Interpretability Script for Deoxys Pipeline
 
 This script runs LIME interpretability analysis on a trained model using Deoxys.
 It loads the best model from the provided `log_folder` and applies LIME to explain its predictions.
-
-The script follows the same structure as the VarGrad interpretability script.
 """
 
 import customize_obj
@@ -60,7 +58,7 @@ if __name__ == '__main__':
     parser.add_argument("--temp_folder", default='', type=str)
     parser.add_argument("--model_checkpoint_period", default=1, type=int)
     parser.add_argument("--prediction_checkpoint_period", default=1, type=int)
-    parser.add_argument("--meta", default='patient_idx,slice_idx', type=str)
+    parser.add_argument("--meta", default='patient_idx', type=str)  # Default to patient_idx only
     parser.add_argument("--monitor", default='avg_score', type=str)
     parser.add_argument("--monitor_mode", default='max', type=str)
     parser.add_argument("--memory_limit", default=0, type=int)
@@ -78,8 +76,6 @@ if __name__ == '__main__':
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
             print(e)  # Virtual devices must be set before GPUs are initialized
-
-    meta = args.meta.split(',')
 
     print('Explaining models in', args.log_folder)
     print('Unprocessed predictions are saved to', args.temp_folder)
@@ -101,21 +97,19 @@ if __name__ == '__main__':
     test_gen = dr.test_generator  # Test data generator
     steps_per_epoch = test_gen.total_batch  # Total batches in the test set
 
-    # Extract metadata (patient & slice indices)
-    pids, sids = [], []
-    with h5py.File(exp.post_processors.dataset_filename) as f:
+    # Extract patient IDs
+    pids = []
+    with h5py.File(exp.post_processors.dataset_filename, 'r') as f:
+        print("Available keys in dataset:", list(f.keys()))  # Debugging line
         for fold in test_gen.folds:
-            pids.append(f[fold][meta[0]][:])
-            sids.append(f[fold][meta[1]][:])
+            pids.append(f[fold][args.meta][:])  # Load patient IDs
     pids = np.concatenate(pids)
-    sids = np.concatenate(sids)
 
     # Create output HDF5 file for LIME results
     lime_file_path = f'{args.log_folder}/test_lime.h5'
     with h5py.File(lime_file_path, 'w') as f:
         print('Created file', lime_file_path)
-        f.create_dataset(meta[0], data=pids)
-        f.create_dataset(meta[1], data=sids)
+        f.create_dataset(args.meta, data=pids)
         f.create_dataset('lime', shape=(len(pids), 256, 256))
 
     # Initialize LIME explainer
