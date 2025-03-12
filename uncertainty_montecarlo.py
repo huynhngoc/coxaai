@@ -7,7 +7,6 @@ import h5py
 import pandas as pd
 from deoxys.data.preprocessor import preprocessor_from_config
 import json
-
 from sklearn import metrics
 from sklearn.metrics import matthews_corrcoef
 
@@ -36,15 +35,7 @@ def metric_avg_score(res_df, postprocessor):
 
     return res_df
 
-# Create a function to augment the image
-def augment_image(image, preprocessors):
-    """
-    Augment the image using the preprocessors. 
-    Preprocessors are loaded from the config file.
-    """
-    for preprocessor in preprocessors:
-        image = preprocessor.transform(image, None)
-    return image
+
 
 # Main function
 if __name__ == '__main__':
@@ -55,7 +46,6 @@ if __name__ == '__main__':
     
     ## Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("config")
     parser.add_argument("log_folder")
     parser.add_argument("--iter", default=40, type=int)
     ### Temporary folder for intermediate results
@@ -77,15 +67,8 @@ if __name__ == '__main__':
 
     ### Set base path for results based on experiment name
     base_path = '../results/' + args.log_folder.split('/')[-1]
-    ### Load augmentation configuration file
-    with open(args.config, 'r') as file:
-        config = json.load(file)
     ### Number of iterations
     iter = args.iter
-    ### Load preprocessing configurations from JSON file
-    preprocessors = []
-    for pp_config in config:
-        preprocessors.append(preprocessor_from_config(pp_config))
 
 
     # Load the best model based on the chosen metric
