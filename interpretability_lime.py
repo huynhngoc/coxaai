@@ -110,7 +110,7 @@ if __name__ == '__main__':
     with h5py.File(lime_file_path, 'w') as f:
         print('Created file', lime_file_path)
         f.create_dataset(args.meta, data=pids)
-        f.create_dataset('lime', shape=(len(pids), 256, 256))
+        f.create_dataset('lime', shape=(len(pids), 800, 800))
 
     # Initialize LIME explainer
     data_gen = test_gen.generate()
