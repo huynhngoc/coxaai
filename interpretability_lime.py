@@ -123,7 +123,7 @@ if __name__ == '__main__':
         for image in x:
             explanation = explainer.explain_instance(
                 image.astype('double'), model.predict,
-                top_labels=1, hide_color=0, num_samples=1000)
+                top_labels=1, hide_color=0, num_samples=50)
             
             ind = explanation.top_labels[0]
             dict_heatmap = dict(explanation.local_exp[ind])
