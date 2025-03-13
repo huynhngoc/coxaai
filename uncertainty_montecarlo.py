@@ -111,7 +111,7 @@ if __name__ == '__main__':
         for trial in range(40):
             print(f'Trial {trial+1}/40')
             #mc_pred[..., trial] = model(x).numpy().flatten()  # this will run the model with dropout and store the results
-            mc_pred[..., trial] = model(x, training=True).numpy().flatten()
+            mc_pred[..., trial] = model(x, training=True).numpy().flatten() # Set training=True to enable dropout during inference mode
 
         mc_preds.append(mc_pred)  # Store predictions for this batch
 
