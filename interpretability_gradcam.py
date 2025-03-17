@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument("--monitor", default="avg_score", type=str, help="Metric for best model selection")
     parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction for monitored metric")
     parser.add_argument("--memory_limit", default=0, type=int)
-    parser.add_argument("--layer_name", default="conv5_block3_out", type=str, help="Target convolutional layer for Grad-CAM")
+    parser.add_argument("--layer_name", default="top_conv", type=str, help="Target convolutional layer for Grad-CAM")
 
     args, unknown = parser.parse_known_args()
 
