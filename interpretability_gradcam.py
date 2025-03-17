@@ -1,3 +1,5 @@
+from sklearn.metrics import matthews_corrcoef
+from sklearn import metrics
 import customize_obj
 import tensorflow as tf
 from deoxys.experiment import DefaultExperimentPipeline
@@ -6,6 +8,30 @@ import numpy as np
 import h5py
 import gc
 from tensorflow.keras.models import Model
+
+class Matthews_corrcoef_scorer:
+    def __call__(self, *args, **kwargs):
+        return matthews_corrcoef(*args, **kwargs)
+
+    def _score_func(self, *args, **kwargs):
+        return matthews_corrcoef(*args, **kwargs)
+
+
+try:
+    metrics.SCORERS['mcc'] = Matthews_corrcoef_scorer()
+except:
+    pass
+try:
+    metrics._scorer._SCORERS['mcc'] = Matthews_corrcoef_scorer()
+except:
+    pass
+
+
+def metric_avg_score(res_df, postprocessor):
+    res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0',
+                                  'BinaryAccuracy', 'mcc']].mean(axis=1)
+
+    return res_df
 
 # Main function
 if __name__ == '__main__':
