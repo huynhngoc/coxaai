@@ -108,35 +108,35 @@ if __name__ == '__main__':
 
         gradcam_maps = []
 
-        for j in range(len(x)):  # Process each image individually
+        for j in range(len(x)):  # Process images one by one
             image = np.expand_dims(x[j], axis=0)  # Add batch dimension
+            image_tensor = tf.convert_to_tensor(image)  # Convert NumPy array to TensorFlow tensor
+            class_index = np.argmax(y[j])  # Get the predicted class
 
+            # Compute Grad-CAM
             with tf.GradientTape() as tape:
-                tape.watch(image)
-                conv_outputs, predictions = grad_model(image)
-                class_index = tf.argmax(predictions[0])  # Get predicted class
+                tape.watch(image_tensor)  # Watch the tensor
+                conv_outputs, predictions = grad_model(image_tensor)  # Run model
                 loss = predictions[:, class_index]
 
-            grads = tape.gradient(loss, conv_outputs)
-            pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+                grads = tape.gradient(loss, conv_outputs)
+                pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
 
-            # Compute weighted activation map
-            conv_outputs = conv_outputs.numpy()[0]
-            pooled_grads = pooled_grads.numpy()
-            for k in range(conv_outputs.shape[-1]):
-                conv_outputs[..., k] *= pooled_grads[k]
+                # Compute weighted activation map
+                conv_outputs = conv_outputs[0].numpy()
+                pooled_grads = pooled_grads.numpy()
+                for k in range(pooled_grads.shape[-1]):
+                    conv_outputs[..., k] *= pooled_grads[k]
 
-            # Compute Grad-CAM heatmap
-            gradcam_map = np.mean(conv_outputs, axis=-1)
-            gradcam_map = np.maximum(gradcam_map, 0)  # Apply ReLU
-            if np.max(gradcam_map) > 0:
+                # Compute heatmap
+                gradcam_map = np.mean(conv_outputs, axis=-1)
+                gradcam_map = np.maximum(gradcam_map, 0)  # Apply ReLU
                 gradcam_map /= np.max(gradcam_map)  # Normalize to [0,1]
 
-            # Resize to match original image size
-            gradcam_map = tf.image.resize(gradcam_map[..., np.newaxis], (800, 800)).numpy().squeeze()
-            gradcam_maps.append(gradcam_map)
+                # Resize to match original image size
+                gradcam_map = tf.image.resize(gradcam_map[..., np.newaxis], (800, 800)).numpy().squeeze()
 
-        gradcam_maps = np.array(gradcam_maps, dtype=np.float32)
+        gradcam_maps.append(gradcam_map)
 
         # Save to HDF5 file
         with h5py.File(gradcam_filename, 'a') as f:
