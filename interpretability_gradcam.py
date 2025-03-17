@@ -108,6 +108,8 @@ if __name__ == '__main__':
 
         gradcam_maps = []
 
+        y = model.predict(x)
+
         for j in range(len(x)):  # Process images one by one
             image = np.expand_dims(x[j], axis=0)  # Add batch dimension
             image_tensor = tf.convert_to_tensor(image)  # Convert NumPy array to TensorFlow tensor
