@@ -42,7 +42,7 @@ if __name__ == '__main__':
     gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
         raise RuntimeError("GPU Unavailable")
-    
+
     # Enable memory growth to avoid OOM errors
     tf.config.experimental.set_memory_growth(gpus[0], True)
 
@@ -57,7 +57,8 @@ if __name__ == '__main__':
     parser.add_argument("--monitor", default="avg_score", type=str, help="Metric for best model selection")
     parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction for monitored metric")
     parser.add_argument("--memory_limit", default=0, type=int)
-    parser.add_argument("--background_samples", default=10, type=int, help="Number of background samples for SHAP")
+    parser.add_argument("--background_samples", default=5, type=int, help="Number of background samples for SHAP")
+    parser.add_argument("--batch_size", default=2, type=int, help="Batch size for SHAP processing")
 
     args, unknown = parser.parse_known_args()
 
@@ -79,7 +80,7 @@ if __name__ == '__main__':
     dr = exp.model.data_reader  
     test_gen = dr.test_generator  
     steps_per_epoch = test_gen.total_batch  
-    batch_size = min(test_gen.batch_size, 4)  # Reduce batch size to avoid OOM errors
+    batch_size = min(args.batch_size, test_gen.batch_size)  # Use a small batch size
 
     # Load patient IDs
     pids = []
@@ -95,23 +96,19 @@ if __name__ == '__main__':
         f.create_dataset(args.meta, data=pids)
         f.create_dataset('shap_values', shape=(len(pids), 800, 800), dtype=np.float32)
 
-    i = 0  # Batch index
-    sub_idx = 0  # Track processed images
-
     # Select a small subset of the dataset to use as a "background" set for SHAP
+    print("Selecting background samples for SHAP...")
     background_data = []
     for x, _ in test_gen.generate():
         background_data.append(x)
-        i += 1
-        if i >= args.background_samples:  # Limit number of background samples
+        if len(background_data) >= args.background_samples:  # Limit background samples
             break
 
-    background_data = np.concatenate(background_data)  # Combine all background images
-    background_data = background_data[:args.background_samples]  # Use only required samples
+    background_data = np.concatenate(background_data, axis=0)[:args.background_samples]  # Restrict number of samples
 
-    # Initialize SHAP explainer using DeepExplainer (more memory-efficient)
+    # Initialize SHAP explainer using DeepExplainer
     print("Initializing SHAP explainer...")
-    explainer = shap.GradientExplainer(model, background_data)
+    explainer = shap.DeepExplainer(model, background_data)
 
     i = 0  # Batch index
     sub_idx = 0  # Track processed images
@@ -120,21 +117,30 @@ if __name__ == '__main__':
     for x, _ in test_gen.generate():
         print(f'Processing batch {i+1}/{steps_per_epoch}...')
 
-        # Compute SHAP values with limited `nsamples`
-        shap_values = explainer.shap_values(x)  
-        shap_map = np.array(shap_values).mean(axis=0)  # Average across multiple channels
+        # Compute SHAP values for each image individually to reduce memory usage
+        shap_maps = []
+        for img in x:
+            img = np.expand_dims(img, axis=0)  # Add batch dimension
+            shap_values = explainer.shap_values(img)  # Get SHAP values
+            shap_map = np.array(shap_values).mean(axis=0)  # Average across channels
+            shap_map = np.squeeze(shap_map)  # Remove batch dimension
 
-        # Normalize SHAP values (optional, but helps with visualization)
-        shap_map = (shap_map - shap_map.min()) / (shap_map.max() - shap_map.min())
+            # Normalize SHAP values
+            if shap_map.max() > shap_map.min():
+                shap_map = (shap_map - shap_map.min()) / (shap_map.max() - shap_map.min())
 
-        # Resize SHAP maps to match the image size
-        resized_shap_maps = np.array([resize(img, (800, 800)) for img in shap_map])
+            # Resize to match original image size
+            shap_map = resize(shap_map, (800, 800))
+            shap_maps.append(shap_map)
+
+        # Convert to NumPy array
+        shap_maps = np.array(shap_maps)
 
         # Save to HDF5 file
         with h5py.File(shap_filename, 'a') as f:
-            f['shap_values'][sub_idx:sub_idx + len(x)] = resized_shap_maps
+            f['shap_values'][sub_idx:sub_idx + len(x)] = shap_maps
 
-        sub_idx += x.shape[0]
+        sub_idx += len(x)
         i += 1
         gc.collect()
 
