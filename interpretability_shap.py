@@ -43,6 +43,9 @@ if __name__ == '__main__':
     if not gpus:
         raise RuntimeError("GPU Unavailable")
     
+    # Enable memory growth to avoid OOM errors
+    tf.config.experimental.set_memory_growth(gpus[0], True)
+
     ## Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("log_folder", type=str, help="Path to the experiment log folder")
@@ -54,7 +57,7 @@ if __name__ == '__main__':
     parser.add_argument("--monitor", default="avg_score", type=str, help="Metric for best model selection")
     parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction for monitored metric")
     parser.add_argument("--memory_limit", default=0, type=int)
-    parser.add_argument("--background_samples", default=50, type=int, help="Number of background samples for SHAP")
+    parser.add_argument("--background_samples", default=10, type=int, help="Number of background samples for SHAP")
 
     args, unknown = parser.parse_known_args()
 
@@ -76,7 +79,7 @@ if __name__ == '__main__':
     dr = exp.model.data_reader  
     test_gen = dr.test_generator  
     steps_per_epoch = test_gen.total_batch  
-    batch_size = test_gen.batch_size  
+    batch_size = min(test_gen.batch_size, 4)  # Reduce batch size to avoid OOM errors
 
     # Load patient IDs
     pids = []
@@ -106,9 +109,9 @@ if __name__ == '__main__':
     background_data = np.concatenate(background_data)  # Combine all background images
     background_data = background_data[:args.background_samples]  # Use only required samples
 
-    # Initialize SHAP explainer with the background dataset
+    # Initialize SHAP explainer using DeepExplainer (more memory-efficient)
     print("Initializing SHAP explainer...")
-    explainer = shap.GradientExplainer(model, background_data)
+    explainer = shap.DeepExplainer(model, background_data)
 
     i = 0  # Batch index
     sub_idx = 0  # Track processed images
@@ -117,8 +120,8 @@ if __name__ == '__main__':
     for x, _ in test_gen.generate():
         print(f'Processing batch {i+1}/{steps_per_epoch}...')
 
-        # Compute SHAP values
-        shap_values = explainer.shap_values(x)  # Get SHAP values for each pixel
+        # Compute SHAP values with limited `nsamples`
+        shap_values = explainer.shap_values(x, nsamples=200)  # Limit nsamples to avoid OOM
         shap_map = np.array(shap_values).mean(axis=0)  # Average across multiple channels
 
         # Normalize SHAP values (optional, but helps with visualization)
