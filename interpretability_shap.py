@@ -121,7 +121,7 @@ if __name__ == '__main__':
         print(f'Processing batch {i+1}/{steps_per_epoch}...')
 
         # Compute SHAP values with limited `nsamples`
-        shap_values = explainer.shap_values(x, nsamples=200)  # Limit nsamples to avoid OOM
+        shap_values = explainer.shap_values(x)  
         shap_map = np.array(shap_values).mean(axis=0)  # Average across multiple channels
 
         # Normalize SHAP values (optional, but helps with visualization)
