@@ -33,7 +33,7 @@ def metric_avg_score(res_df, postprocessor):
 
 def generate_random_masks(img_size, num_masks=1000, mask_size=8, p=0.5):
     """
-    Generate random binary masks using NumPy.
+    Generate random binary masks using NumPy and TensorFlow.
     - img_size: (H, W) -> Size of input image
     - num_masks: Number of masks to generate
     - mask_size: Downsampled mask resolution (e.g., 8x8)
@@ -41,7 +41,7 @@ def generate_random_masks(img_size, num_masks=1000, mask_size=8, p=0.5):
     """
     small_masks = np.random.choice([0, 1], size=(num_masks, mask_size, mask_size, 1), p=[1-p, p])
     
-    # Resize masks to image size using TensorFlow instead of cv2
+    # Resize masks to image size using TensorFlow instead of OpenCV
     masks = np.array([tf.image.resize(m.astype(np.float32), img_size).numpy() for m in small_masks])
     
     return np.expand_dims(masks, axis=-1)  # Add channel dimension
@@ -69,18 +69,37 @@ def compute_rise_heatmap(model, image, num_masks=1000):
 
 # Main function
 if __name__ == '__main__':
+    ## Check if GPU is available
+    gpus = tf.config.list_physical_devices('GPU')
+    if not gpus:
+        raise RuntimeError("GPU Unavailable")
+
+    ## Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("log_folder", type=str, help="Path to the experiment log folder")
+    parser.add_argument("--iter", default=40, type=int, help="Number of iterations")
+    parser.add_argument("--temp_folder", default='', type=str, help="Temporary folder for intermediate results")
+    parser.add_argument("--model_checkpoint_period", default=1, type=int)
+    parser.add_argument("--prediction_checkpoint_period", default=1, type=int)
+    parser.add_argument("--meta", default="patient_idx", type=str, help="Meta identifier (e.g., patient ID)")
+    parser.add_argument("--monitor", default="avg_score", type=str, help="Metric for best model selection")
+    parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction for monitored metric")
+    parser.add_argument("--memory_limit", default=0, type=int)
+    parser.add_argument("--layer_name", default="top_conv", type=str, help="Target convolutional layer for Grad-CAM")
     parser.add_argument("--num_masks", default=1000, type=int, help="Number of random masks")
     parser.add_argument("--mask_size", default=8, type=int, help="Resolution of downsampled masks")
-    parser.add_argument("--meta", default="patient_idx", type=str, help="Meta identifier")
-    parser.add_argument("--monitor", default="avg_score", type=str, help="Metric for best model selection")
-    parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction")
-    args = parser.parse_args()
+
+    args, unknown = parser.parse_known_args()
+
+    ### Set base path for results based on experiment name
+    base_path = '../results/' + args.log_folder.split('/')[-1]
+
+    print(f"Using log folder: {args.log_folder}")
 
     # Load the best model using avg_score
     exp = DefaultExperimentPipeline(
-        log_base_path=args.log_folder
+        log_base_path=args.log_folder,
+        temp_base_path=args.temp_folder
     ).load_best_model(
         monitor=args.monitor,
         use_raw_log=False,
@@ -88,33 +107,45 @@ if __name__ == '__main__':
         custom_modifier_fn=metric_avg_score  # Apply avg_score function
     )
 
-    model = exp.model.model
-    dr = exp.model.data_reader
-    test_gen = dr.test_generator
-    steps_per_epoch = test_gen.total_batch
-    batch_size = test_gen.batch_size
+    # Extract model & test generator
+    model = exp.model.model  
+    dr = exp.model.data_reader  
+    test_gen = dr.test_generator  
+    steps_per_epoch = test_gen.total_batch  
+    batch_size = test_gen.batch_size  
 
-    pids = np.concatenate([f[args.meta][:] for fold in test_gen.folds])
+    # Load patient IDs
+    pids = []
+    with h5py.File(exp.post_processors.dataset_filename, 'r') as f:
+        for fold in test_gen.folds:
+            pids.append(f[fold][args.meta][:])
+    pids = np.concatenate(pids)
 
-    # Create HDF5 file to store RISE heatmaps
+    # Create HDF5 file to store RISE results
     rise_filename = args.log_folder + f'/test_rise.h5'
     with h5py.File(rise_filename, 'w') as f:
+        print(f'Created file: {rise_filename}')
         f.create_dataset(args.meta, data=pids)
         f.create_dataset('rise_heatmap', shape=(len(pids), 800, 800), dtype=np.float32)
 
-    i, sub_idx = 0, 0
+    i = 0  # Batch index
+    sub_idx = 0  # Track processed images
+
+    # Process each batch in the test set
     for x, _ in test_gen.generate():
         print(f'Processing batch {i+1}/{steps_per_epoch}...')
+
         rise_maps = []
 
-        for j in range(len(x)):  # Process each image
+        for j in range(len(x)):  # Process images one by one
             image = x[j]  # Single image
             heatmap = compute_rise_heatmap(model, image, num_masks=args.num_masks)  # Compute RISE map
             
-            # Resize to match 800x800 output using TensorFlow instead of cv2
+            # Resize to match original image size using TensorFlow
             heatmap_resized = tf.image.resize(heatmap[..., np.newaxis], (800, 800)).numpy().squeeze()
             rise_maps.append(heatmap_resized)
 
+        # Save to HDF5 file
         with h5py.File(rise_filename, 'a') as f:
             f['rise_heatmap'][sub_idx:sub_idx + len(x)] = rise_maps
 
@@ -126,4 +157,3 @@ if __name__ == '__main__':
             break
 
     print(f"RISE processing completed. Results saved to {rise_filename}")
-
