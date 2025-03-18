@@ -13,13 +13,17 @@ from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
 import tensorflow.keras.backend as K
 
-# Function to completely replace BatchNorm layers (SHAP doesn't support them)
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Lambda
+import tensorflow as tf
+
+# Function to replace BatchNorm layers with identity function
 def remove_batchnorm_layers(model):
     inputs = model.input
     x = inputs
     for layer in model.layers:
-        if isinstance(layer, BatchNormalization):
-            x = Lambda(lambda y: K.identity(y), name=layer.name + "_removed")(x)
+        if isinstance(layer, tf.keras.layers.BatchNormalization):
+            x = Lambda(lambda y: tf.identity(y), name=layer.name + "_removed")(x)
         else:
             x = layer(x)
     return Model(inputs, x)
