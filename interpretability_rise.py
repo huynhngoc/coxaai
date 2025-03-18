@@ -3,13 +3,12 @@ import tensorflow as tf
 import h5py
 import argparse
 import gc
-import cv2
 from deoxys.experiment import DefaultExperimentPipeline
 from tensorflow.keras.models import Model
 from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
 
-# Define MCC scorer
+# Define Matthews Correlation Coefficient (MCC) scorer
 class Matthews_corrcoef_scorer:
     def __call__(self, *args, **kwargs):
         return matthews_corrcoef(*args, **kwargs)
@@ -27,56 +26,59 @@ try:
 except:
     pass
 
-# Compute avg_score for best model selection
+# Compute average metric score for model selection
 def metric_avg_score(res_df, postprocessor):
     res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0', 'BinaryAccuracy', 'mcc']].mean(axis=1)
     return res_df
 
 def generate_random_masks(img_size, num_masks=1000, mask_size=8, p=0.5):
     """
-    Generate random binary masks.
-    - img_size: (H, W)
-    - num_masks: Number of masks
-    - mask_size: Downsampled mask resolution
+    Generate random binary masks using NumPy.
+    - img_size: (H, W) -> Size of input image
+    - num_masks: Number of masks to generate
+    - mask_size: Downsampled mask resolution (e.g., 8x8)
     - p: Probability of keeping pixels
     """
     small_masks = np.random.choice([0, 1], size=(num_masks, mask_size, mask_size, 1), p=[1-p, p])
-    masks = np.array([cv2.resize(m, img_size, interpolation=cv2.INTER_LINEAR) for m in small_masks])
-    return np.expand_dims(masks, axis=-1)
+    
+    # Resize masks to image size using TensorFlow instead of cv2
+    masks = np.array([tf.image.resize(m.astype(np.float32), img_size).numpy() for m in small_masks])
+    
+    return np.expand_dims(masks, axis=-1)  # Add channel dimension
 
 def compute_rise_heatmap(model, image, num_masks=1000):
     """
     Compute RISE importance heatmap for a single image.
     - model: Trained model
-    - image: Single image (H, W, C)
+    - image: Single input image (H, W, C)
     - num_masks: Number of random masks
     """
     img_size = image.shape[:2]
     masks = generate_random_masks(img_size, num_masks)
 
     masked_images = np.multiply(image, masks)  # Apply masks to the image
-    preds = model.predict(masked_images, batch_size=32)
+    preds = model.predict(masked_images, batch_size=32)  # Run inference
 
     class_idx = np.argmax(model.predict(np.expand_dims(image, axis=0)))  # Get predicted class
     scores = preds[:, class_idx]  # Extract scores for the predicted class
 
-    heatmap = np.tensordot(scores, masks, axes=(0, 0))  # Weighted sum
-    heatmap /= np.max(heatmap)  # Normalize
+    heatmap = np.tensordot(scores, masks, axes=(0, 0))  # Weighted sum of masks
+    heatmap /= np.max(heatmap)  # Normalize to [0,1]
 
     return heatmap
 
 # Main function
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("log_folder", type=str, help="Path to experiment log folder")
+    parser.add_argument("log_folder", type=str, help="Path to the experiment log folder")
     parser.add_argument("--num_masks", default=1000, type=int, help="Number of random masks")
-    parser.add_argument("--mask_size", default=8, type=int, help="Resolution of masks")
+    parser.add_argument("--mask_size", default=8, type=int, help="Resolution of downsampled masks")
     parser.add_argument("--meta", default="patient_idx", type=str, help="Meta identifier")
     parser.add_argument("--monitor", default="avg_score", type=str, help="Metric for best model selection")
     parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction")
     args = parser.parse_args()
 
-    # Load best model using avg_score
+    # Load the best model using avg_score
     exp = DefaultExperimentPipeline(
         log_base_path=args.log_folder
     ).load_best_model(
@@ -108,7 +110,9 @@ if __name__ == '__main__':
         for j in range(len(x)):  # Process each image
             image = x[j]  # Single image
             heatmap = compute_rise_heatmap(model, image, num_masks=args.num_masks)  # Compute RISE map
-            heatmap_resized = cv2.resize(heatmap, (800, 800))  # Resize to match output
+            
+            # Resize to match 800x800 output using TensorFlow instead of cv2
+            heatmap_resized = tf.image.resize(heatmap[..., np.newaxis], (800, 800)).numpy().squeeze()
             rise_maps.append(heatmap_resized)
 
         with h5py.File(rise_filename, 'a') as f:
@@ -122,3 +126,4 @@ if __name__ == '__main__':
             break
 
     print(f"RISE processing completed. Results saved to {rise_filename}")
+
