@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     # Initialize SHAP explainer using DeepExplainer (more memory-efficient)
     print("Initializing SHAP explainer...")
-    explainer = shap.DeepExplainer(model, background_data)
+    explainer = shap.GradientExplainer(model, background_data)
 
     i = 0  # Batch index
     sub_idx = 0  # Track processed images
