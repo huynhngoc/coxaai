@@ -8,10 +8,8 @@ import pandas as pd
 from deoxys.data.preprocessor import preprocessor_from_config
 import json
 import gc
-
 from sklearn import metrics
 from sklearn.metrics import matthews_corrcoef
-
 
 class Matthews_corrcoef_scorer:
     def __call__(self, *args, **kwargs):
@@ -19,7 +17,6 @@ class Matthews_corrcoef_scorer:
 
     def _score_func(self, *args, **kwargs):
         return matthews_corrcoef(*args, **kwargs)
-
 
 try:
     metrics.SCORERS['mcc'] = Matthews_corrcoef_scorer()
@@ -29,7 +26,6 @@ try:
     metrics._scorer._SCORERS['mcc'] = Matthews_corrcoef_scorer()
 except:
     pass
-
 
 def metric_avg_score(res_df, postprocessor):
     res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0',
@@ -153,4 +149,3 @@ if __name__ == '__main__':
         # Stop early if we reach the end of the test set
         if i == steps_per_epoch:
             break
-

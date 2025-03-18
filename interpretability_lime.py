@@ -1,10 +1,3 @@
-"""
-LIME Interpretability Script for Deoxys Pipeline
-
-This script runs LIME interpretability analysis on a trained model using Deoxys.
-It loads the best model from the provided `log_folder` and applies LIME to explain its predictions.
-"""
-
 import customize_obj
 import tensorflow as tf
 from deoxys.experiment import DefaultExperimentPipeline
@@ -75,7 +68,7 @@ if __name__ == '__main__':
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
-            print(e)  # Virtual devices must be set before GPUs are initialized
+            print(e)  
 
     print('Explaining models in', args.log_folder)
     print('Unprocessed predictions are saved to', args.temp_folder)
@@ -123,7 +116,7 @@ if __name__ == '__main__':
         for image in x:
             explanation = explainer.explain_instance(
                 image.astype('double'), model.predict,
-                top_labels=1, hide_color=0, num_samples=50)
+                top_labels=1, hide_color=0, num_samples=100)
             
             ind = explanation.top_labels[0]
             dict_heatmap = dict(explanation.local_exp[ind])

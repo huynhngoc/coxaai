@@ -9,7 +9,6 @@ from tensorflow.keras.models import Model
 from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
 
-# Define Matthews Correlation Coefficient scorer
 class Matthews_corrcoef_scorer:
     def __call__(self, *args, **kwargs):
         return matthews_corrcoef(*args, **kwargs)
@@ -17,7 +16,6 @@ class Matthews_corrcoef_scorer:
     def _score_func(self, *args, **kwargs):
         return matthews_corrcoef(*args, **kwargs)
 
-# Register MCC scorer in sklearn
 try:
     metrics.SCORERS['mcc'] = Matthews_corrcoef_scorer()
 except:
@@ -27,7 +25,6 @@ try:
 except:
     pass
 
-# Compute average metric score for best model selection
 def metric_avg_score(res_df, postprocessor):
     """Compute the average score for model selection"""
     res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0',
@@ -150,5 +147,3 @@ if __name__ == '__main__':
 
         if i == steps_per_epoch:
             break
-
-    print(f"Grad-CAM processing completed. Results saved to {gradcam_filename}")
