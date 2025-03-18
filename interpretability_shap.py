@@ -7,17 +7,22 @@ import h5py
 import gc
 import shap
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import BatchNormalization, Lambda
 from skimage.transform import resize
 from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
+import tensorflow.keras.backend as K
 
-# Function to freeze BatchNorm layers (to work with SHAP DeepExplainer)
-def freeze_batchnorm_layers(model):
+# Function to completely replace BatchNorm layers (SHAP doesn't support them)
+def remove_batchnorm_layers(model):
+    inputs = model.input
+    x = inputs
     for layer in model.layers:
         if isinstance(layer, BatchNormalization):
-            layer.trainable = False  # Set BatchNorm layers to inference mode
-    return model
+            x = Lambda(lambda y: K.identity(y), name=layer.name + "_removed")(x)
+        else:
+            x = layer(x)
+    return Model(inputs, x)
 
 # Define Matthews Correlation Coefficient scorer
 class Matthews_corrcoef_scorer:
@@ -90,8 +95,8 @@ if __name__ == '__main__':
     steps_per_epoch = test_gen.total_batch  
     batch_size = min(args.batch_size, test_gen.batch_size)  # Use a very small batch size
 
-    # Freeze BatchNorm layers to avoid SHAP gradient issues
-    modified_model = freeze_batchnorm_layers(model)
+    # Remove BatchNorm layers to avoid SHAP errors
+    modified_model = remove_batchnorm_layers(model)
 
     # Load patient IDs
     pids = []
@@ -117,7 +122,7 @@ if __name__ == '__main__':
 
     background_data = np.concatenate(background_data, axis=0)[:args.background_samples]  # Restrict number of samples
 
-    # Initialize SHAP explainer using **DeepExplainer** on the modified model
+    # Initialize SHAP explainer using DeepExplainer on the modified model
     print("Initializing SHAP explainer...")
     explainer = shap.DeepExplainer(modified_model, background_data)
 
