@@ -7,9 +7,17 @@ import h5py
 import gc
 import shap
 from tensorflow.keras.models import Model
+from tensorflow.keras.layers import BatchNormalization
 from skimage.transform import resize
 from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
+
+# Function to freeze BatchNorm layers (to work with SHAP DeepExplainer)
+def freeze_batchnorm_layers(model):
+    for layer in model.layers:
+        if isinstance(layer, BatchNormalization):
+            layer.trainable = False  # Set BatchNorm layers to inference mode
+    return model
 
 # Define Matthews Correlation Coefficient scorer
 class Matthews_corrcoef_scorer:
@@ -58,7 +66,7 @@ if __name__ == '__main__':
     parser.add_argument("--monitor_mode", default="max", type=str, help="Optimization direction for monitored metric")
     parser.add_argument("--memory_limit", default=0, type=int)
     parser.add_argument("--background_samples", default=5, type=int, help="Number of background samples for SHAP")
-    parser.add_argument("--batch_size", default=2, type=int, help="Batch size for SHAP processing")
+    parser.add_argument("--batch_size", default=1, type=int, help="Batch size for SHAP processing")
 
     args, unknown = parser.parse_known_args()
 
@@ -80,7 +88,10 @@ if __name__ == '__main__':
     dr = exp.model.data_reader  
     test_gen = dr.test_generator  
     steps_per_epoch = test_gen.total_batch  
-    batch_size = min(args.batch_size, test_gen.batch_size)  # Use a small batch size
+    batch_size = min(args.batch_size, test_gen.batch_size)  # Use a very small batch size
+
+    # Freeze BatchNorm layers to avoid SHAP gradient issues
+    modified_model = freeze_batchnorm_layers(model)
 
     # Load patient IDs
     pids = []
@@ -106,9 +117,9 @@ if __name__ == '__main__':
 
     background_data = np.concatenate(background_data, axis=0)[:args.background_samples]  # Restrict number of samples
 
-    # Initialize SHAP explainer using DeepExplainer
+    # Initialize SHAP explainer using **DeepExplainer** on the modified model
     print("Initializing SHAP explainer...")
-    explainer = shap.DeepExplainer(model, background_data)
+    explainer = shap.DeepExplainer(modified_model, background_data)
 
     i = 0  # Batch index
     sub_idx = 0  # Track processed images
@@ -148,4 +159,3 @@ if __name__ == '__main__':
             break
 
     print(f"SHAP processing completed. Results saved to {shap_filename}")
-
