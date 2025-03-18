@@ -91,7 +91,7 @@ if __name__ == '__main__':
     with h5py.File(shap_filename, 'w') as f:
         print(f'Created file: {shap_filename}')
         f.create_dataset(args.meta, data=pids)
-        f.create_dataset('shap_values', shape=(len(pids), 224, 224), dtype=np.float32)
+        f.create_dataset('shap_values', shape=(len(pids), 800, 800), dtype=np.float32)
 
     i = 0  # Batch index
     sub_idx = 0  # Track processed images
