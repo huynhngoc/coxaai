@@ -111,7 +111,7 @@ if __name__ == '__main__':
     data_gen = test_gen.generate()
 
     i, sub_idx = 0, 0
-    num_samples = 100  # LIME sample limit
+    num_samples = 50  # LIME sample limit
 
     for x, _ in data_gen:
         print(f'Processing Batch {i+1}/{steps_per_epoch}')
