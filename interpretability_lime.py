@@ -130,10 +130,13 @@ if __name__ == '__main__':
             dict_heatmap = dict(explanation.local_exp[ind])
             lime_heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
 
-            # Save results
+            # ✅ Convert to float32 before writing to HDF5
+            lime_heatmap = np.array(lime_heatmap, dtype=np.float32)
+
+            # Save to file
             with h5py.File(lime_file_path, 'a') as f:
                 f['lime'][sub_idx] = lime_heatmap
-            sub_idx += 1
+                sub_idx += 1
 
         i += 1
         gc.collect()
