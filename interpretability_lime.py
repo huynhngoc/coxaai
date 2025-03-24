@@ -9,7 +9,7 @@ import pandas as pd
 from lime import lime_image
 from sklearn import metrics
 from sklearn.metrics import matthews_corrcoef
-from skimage.segmentation import slic  # You can swap this with felzenszwalb
+from skimage.segmentation import slic, felzenszwalb  # You can swap this with felzenszwalb
 from tensorflow.keras.applications.efficientnet import preprocess_input
 
 # Custom scorer for Matthews Correlation Coefficient
@@ -40,7 +40,7 @@ def custom_segmentation(image):
     # If grayscale with shape (H, W), expand dims to (H, W, 1)
     if image.ndim == 2:
         image = np.expand_dims(image, axis=-1)
-    return slic(image, n_segments=50, compactness=0.2, channel_axis=-1)
+    return felzenszwalb(image, scale=100, sigma=0.5, min_size=50)
 
 # Function for batch prediction (applies preprocessing if needed)
 def batch_predict(images):
