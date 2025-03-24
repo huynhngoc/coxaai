@@ -35,11 +35,14 @@ def metric_avg_score(res_df, postprocessor):
     res_df['avg_score'] = res_df[['AUC', 'roc_auc', 'f1', 'f1_0', 'BinaryAccuracy', 'mcc']].mean(axis=1)
     return res_df
 
-# Function for custom segmentation
+# Updated segmentation function for grayscale compatibility
 def custom_segmentation(image):
-    return slic(image, n_segments=50, compactness=0.2)  # Replace with felzenszwalb for testing
+    # If grayscale with shape (H, W), expand dims to (H, W, 1)
+    if image.ndim == 2:
+        image = np.expand_dims(image, axis=-1)
+    return slic(image, n_segments=50, compactness=0.2, channel_axis=-1)
 
-# Function for batch prediction
+# Function for batch prediction (applies preprocessing if needed)
 def batch_predict(images):
     images = np.array([preprocess_input(img) for img in images])
     return model.predict(images)
@@ -106,7 +109,7 @@ if __name__ == '__main__':
         f.create_dataset(args.meta, data=pids)
         f.create_dataset('lime', shape=(len(pids), 800, 800))
 
-    # Initialize explainer
+    # Initialize LIME explainer
     explainer = lime_image.LimeImageExplainer()
     data_gen = test_gen.generate()
 
@@ -116,9 +119,12 @@ if __name__ == '__main__':
     for x, _ in data_gen:
         print(f'Processing Batch {i+1}/{steps_per_epoch}')
         for image in x:
-            # NOTE: LIME expects unbatched input
+            # If grayscale with no channel dim, expand to (H, W, 1)
+            if image.ndim == 2:
+                image = np.expand_dims(image, axis=-1)
+
             explanation = explainer.explain_instance(
-                image.astype('double'),  # Don't preprocess here!
+                image.astype('double'),  # Don't preprocess here
                 batch_predict,
                 top_labels=1,
                 hide_color=None,
@@ -130,7 +136,6 @@ if __name__ == '__main__':
             dict_heatmap = dict(explanation.local_exp[ind])
             lime_heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
 
-            # ✅ Convert to float32 before writing to HDF5
             lime_heatmap = np.array(lime_heatmap, dtype=np.float32)
 
             # Save to file
