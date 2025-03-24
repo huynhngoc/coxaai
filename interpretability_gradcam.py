@@ -69,6 +69,11 @@ if __name__ == '__main__':
         custom_modifier_fn=metric_avg_score  # Apply avg_score function
     )
 
+    model = exp.model.model
+    print("Model layers:")
+    for i, layer in enumerate(model.layers):
+        print(f"{i}: {layer.name} ({layer.__class__.__name__})")
+
     # Extract model & test generator
     model = exp.model.model  
     dr = exp.model.data_reader  
