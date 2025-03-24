@@ -5,7 +5,6 @@ import argparse
 import numpy as np
 import h5py
 import gc
-import cv2
 from tensorflow.keras.models import Model
 from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
@@ -142,10 +141,10 @@ if __name__ == '__main__':
 
             heatmap = cam.numpy()
 
-            # Resize using OpenCV to (800x800)
-            heatmap = cv2.resize(heatmap, (800, 800))
+            # Resize using TensorFlow
+            heatmap = tf.image.resize(heatmap[..., np.newaxis], (800, 800)).numpy().squeeze()
 
-            # Normalize to [0, 255]
+            # Normalize to [0, 255] with epsilon to avoid divide-by-zero
             numer = heatmap - np.min(heatmap)
             denom = (np.max(heatmap) - np.min(heatmap)) + 1e-8
             heatmap = numer / denom
