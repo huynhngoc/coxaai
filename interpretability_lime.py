@@ -40,7 +40,7 @@ def custom_segmentation(image):
     # If grayscale with shape (H, W), expand dims to (H, W, 1)
     if image.ndim == 2:
         image = np.expand_dims(image, axis=-1)
-    return felzenszwalb(image, scale=100, sigma=0.5, min_size=50)
+    return felzenszwalb(image, scale=200, sigma=0.5, min_size=100)
 
 # Function for batch prediction (applies preprocessing if needed)
 def batch_predict(images):
