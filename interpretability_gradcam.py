@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import h5py
 import gc
+import cv2
 from tensorflow.keras.models import Model
 from sklearn.metrics import matthews_corrcoef
 from sklearn import metrics
@@ -37,7 +38,7 @@ if __name__ == '__main__':
     gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
         raise RuntimeError("GPU Unavailable")
-    
+
     ## Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("log_folder", type=str, help="Path to the experiment log folder")
@@ -98,49 +99,59 @@ if __name__ == '__main__':
     i = 0  # Batch index
     sub_idx = 0  # Track processed images
 
-    # Create Grad-CAM model
-    grad_model = Model(
-        inputs=model.input,
-        outputs=[model.get_layer(args.layer_name).output, model.output]
-    )
-
     # Process each batch in the test set
     for x, _ in test_gen.generate():
         print(f'Processing batch {i+1}/{steps_per_epoch}...')
 
         gradcam_maps = []
-
         y = model.predict(x)
 
         for j in range(len(x)):  # Process images one by one
-            image = np.expand_dims(x[j], axis=0)  # Add batch dimension
-            image_tensor = tf.convert_to_tensor(image)  # Convert NumPy array to TensorFlow tensor
-            class_index = np.argmax(y[j])  # Get the predicted class
+            image = np.expand_dims(x[j], axis=0)
+            image_tensor = tf.cast(tf.convert_to_tensor(image), tf.float32)
 
-            # Compute Grad-CAM
+            class_index = np.argmax(y[j])  # Predicted class
+
+            # Build gradient model
+            grad_model = Model(
+                inputs=model.input,
+                outputs=[
+                    model.get_layer(args.layer_name).output,
+                    model.output
+                ]
+            )
+
+            # Grad-CAM computation using guided gradients
             with tf.GradientTape() as tape:
-                tape.watch(image_tensor)  # Watch the tensor
-                conv_outputs, predictions = grad_model(image_tensor)  # Run model
+                conv_outputs, predictions = grad_model(image_tensor)
                 loss = predictions[:, class_index]
 
-                grads = tape.gradient(loss, conv_outputs)
-                pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+            grads = tape.gradient(loss, conv_outputs)
 
-                # Compute weighted activation map
-                conv_outputs = conv_outputs[0].numpy()
-                pooled_grads = pooled_grads.numpy()
-                for k in range(pooled_grads.shape[-1]):
-                    conv_outputs[..., k] *= pooled_grads[k]
+            # Guided backpropagation masking
+            cast_conv_outputs = tf.cast(conv_outputs > 0, "float32")
+            cast_grads = tf.cast(grads > 0, "float32")
+            guided_grads = cast_conv_outputs * cast_grads * grads
 
-                # Compute heatmap
-                gradcam_map = np.mean(conv_outputs, axis=-1)
-                gradcam_map = np.maximum(gradcam_map, 0)  # Apply ReLU
-                gradcam_map /= np.max(gradcam_map)  # Normalize to [0,1]
+            conv_outputs = conv_outputs[0]  # Remove batch
+            guided_grads = guided_grads[0]
 
-                # Resize to match original image size
-                gradcam_map = tf.image.resize(gradcam_map[..., np.newaxis], (800, 800)).numpy().squeeze()
+            # Compute weights and CAM
+            weights = tf.reduce_mean(guided_grads, axis=(0, 1))
+            cam = tf.reduce_sum(tf.multiply(weights, conv_outputs), axis=-1)
 
-        gradcam_maps.append(gradcam_map)
+            heatmap = cam.numpy()
+
+            # Resize using OpenCV to (800x800)
+            heatmap = cv2.resize(heatmap, (800, 800))
+
+            # Normalize to [0, 255]
+            numer = heatmap - np.min(heatmap)
+            denom = (np.max(heatmap) - np.min(heatmap)) + 1e-8
+            heatmap = numer / denom
+            heatmap = (heatmap * 255).astype("uint8")
+
+            gradcam_maps.append(heatmap)
 
         # Save to HDF5 file
         with h5py.File(gradcam_filename, 'a') as f:
