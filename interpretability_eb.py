@@ -97,7 +97,7 @@ if __name__ == '__main__':
             pids.append(f[fold][args.meta][:])
     pids = np.concatenate(pids)
 
-    eb_file_path = f'{args.log_folder}/test_excitation_backprop_contrastive.h5'
+    eb_file_path = f'{args.log_folder}/test_eb.h5'
     with h5py.File(eb_file_path, 'w') as f:
         print('Created file', eb_file_path)
         f.create_dataset(args.meta, data=pids)
