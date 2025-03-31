@@ -37,31 +37,27 @@ def excitation_backprop_tf(model, image, class_idx=None):
         tape.watch(image)
         preds = model(image)
         if class_idx is None:
-            class_idx = tf.argmax(preds[0])
+            class_idx = 0  # Only one output unit in binary case
         loss = preds[:, class_idx]
 
     grads = tape.gradient(loss, image)[0].numpy()
 
-    # Contrastive: subtract 2nd best class gradient
-    with tf.GradientTape() as tape:
-        tape.watch(image)
-        preds = model(image)
-        sorted_classes = tf.argsort(preds[0], direction='DESCENDING')
-        other_class = sorted_classes[1]
-        other_loss = preds[:, other_class]
-    other_grads = tape.gradient(other_loss, image)[0].numpy()
-    grads = grads - other_grads
-
-    # ReLU-style masking
+    # ReLU-style masking (positive gradients only)
     grads = np.maximum(grads, 0)
+
+    # Element-wise multiplication with input
     eb_map = grads * image.numpy()[0]
 
+    # Average channels
     if eb_map.ndim == 3:
         eb_map = eb_map.mean(axis=-1)
 
+    # Normalize to [0, 1]
     eb_map -= eb_map.min()
     eb_map /= (eb_map.max() + 1e-8)
+
     return eb_map
+
 
 # Main function
 if __name__ == '__main__':
