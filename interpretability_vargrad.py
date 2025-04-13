@@ -100,8 +100,8 @@ if __name__ == '__main__':
     pids = np.concatenate(pids)  # Combine IDs from all folds
 
 
-    with h5py.File(args.log_folder + f'/test_vargrad_05.h5', 'w') as f:
-        print('created file', args.log_folder + f'/test_vargrad_05.h5')
+    with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'w') as f:
+        print('created file', args.log_folder + f'/test_vargrad_02.h5')
         f.create_dataset(meta, data=pids)
         f.create_dataset('vargrad', shape=(len(pids), 800, 800))
 
@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
 
         final_var_grad = (var_grad.std(axis=-1)**2).mean(axis=-1)
-        with h5py.File(args.log_folder + f'/test_vargrad_05.h5', 'a') as f:
+        with h5py.File(args.log_folder + f'/test_vargrad_02.h5', 'a') as f:
             f['vargrad'][sub_idx:sub_idx + len(x)] = final_var_grad
         sub_idx += x.shape[0]
         i += 1
