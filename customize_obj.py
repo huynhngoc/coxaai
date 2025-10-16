@@ -8,7 +8,7 @@ from deoxys.model.losses import loss_from_config, Loss
 from tensorflow.keras.applications import efficientnet, efficientnet_v2
 from tensorflow.keras.layers import Dropout, Dense
 from tensorflow.keras.models import Model
-
+import tensorflow as tf
 
 import numpy as np
 
@@ -127,3 +127,23 @@ class FusedLoss(Loss):
                 loss += loss_weight * loss_class(target, prediction)
 
         return loss
+
+
+@custom_loss
+class DiffPenalty(Loss):
+    """Used to add a penalty to the loss based on the difference between
+    the prediction and target.
+    """
+
+    def __init__(self, reduction="auto", name="diff_penalty"):
+        super().__init__(reduction, name)
+
+    def call(self, target, prediction):
+        # Predicted class (argmax)
+        y_pred_class = tf.argmax(prediction, axis=-1)
+
+        # True class
+        y_true_class = tf.argmax(target, axis=-1)
+        class_diff = tf.abs(y_pred_class - y_true_class)
+
+        return class_diff * class_diff
