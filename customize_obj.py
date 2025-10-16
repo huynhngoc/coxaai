@@ -144,6 +144,6 @@ class DiffPenalty(Loss):
 
         # True class
         y_true_class = tf.argmax(target, axis=-1)
-        class_diff = tf.abs(y_pred_class - y_true_class)
+        class_diff = tf.cast(tf.abs(y_pred_class - y_true_class), prediction.dtype)
 
         return class_diff * class_diff
