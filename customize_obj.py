@@ -45,14 +45,17 @@ class EfficientNetModelLoader(BaseModelLoader):
         """
         num_class = self.options['num_class']
         pretrained = self.options['pretrained']
+        activation_type = self.options.get('activation', 'auto')
         shape = self._input_params['shape']
         efficientNet = self.map_name[self.options['class_name']]
-
-        if num_class <= 2:
-            num_class = 1
-            activation = 'sigmoid'
+        if activation_type == 'auto':
+            if num_class <= 2:
+                num_class = 1
+                activation = 'sigmoid'
+            else:
+                activation = 'softmax'
         else:
-            activation = 'softmax'
+            activation = self.activation
 
         if pretrained:
             model = efficientNet(include_top=False, classes=num_class,
