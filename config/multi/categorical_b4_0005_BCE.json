@@ -75,7 +75,7 @@
     },
     "model_params": {
         "loss": {
-            "class_name": "CategoricalCrossentropy",
+            "class_name": "BinaryCrossentropy",
             "config": {}
         },
         "optimizer": {
@@ -90,6 +90,9 @@
             },
             {
                 "class_name": "CategoricalCrossentropy"
+            },
+            {
+                "class_name": "BinaryCrossentropy"
             },
             {
                 "class_name": "BinaryAccuracy"
