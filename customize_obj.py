@@ -2,13 +2,12 @@ from deoxys.customize import custom_architecture, custom_preprocessor, custom_lo
 from deoxys.loaders.architecture import BaseModelLoader
 from deoxys.data.preprocessor import BasePreprocessor
 from deoxys.utils import deep_copy
-from deoxys.model.losses import loss_from_config
+from deoxys.model.losses import loss_from_config, Loss
 
 
 from tensorflow.keras.applications import efficientnet, efficientnet_v2
 from tensorflow.keras.layers import Dropout, Dense
 from tensorflow.keras.models import Model
-from tensorflow.keras.losses import CategoricalCrossentropy
 
 
 import numpy as np
