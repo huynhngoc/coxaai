@@ -1,12 +1,15 @@
-from deoxys.customize import custom_architecture, custom_preprocessor
+from deoxys.customize import custom_architecture, custom_preprocessor, custom_loss
 from deoxys.loaders.architecture import BaseModelLoader
 from deoxys.data.preprocessor import BasePreprocessor
 from deoxys.utils import deep_copy
+from deoxys.model.losses import loss_from_config
 
 
 from tensorflow.keras.applications import efficientnet, efficientnet_v2
 from tensorflow.keras.layers import Dropout, Dense
 from tensorflow.keras.models import Model
+from tensorflow.keras.losses import CategoricalCrossentropy
+
 
 import numpy as np
 
@@ -98,3 +101,30 @@ class OneHot(BasePreprocessor):
                 new_targets[..., i][targets == i] = 1
 
         return images, new_targets
+
+
+@custom_loss
+class FusedLoss(Loss):
+    """Used to sum two or more loss functions.
+    """
+
+    def __init__(
+            self, loss_configs, loss_weights=None,
+            reduction="auto", name="fused_loss"):
+        super().__init__(reduction, name)
+        self.losses = [loss_from_config(loss_config)
+                       for loss_config in loss_configs]
+
+        if loss_weights is None:
+            loss_weights = [1] * len(self.losses)
+        self.loss_weights = loss_weights
+
+    def call(self, target, prediction):
+        loss = None
+        for loss_class, loss_weight in zip(self.losses, self.loss_weights):
+            if loss is None:
+                loss = loss_weight * loss_class(target, prediction)
+            else:
+                loss += loss_weight * loss_class(target, prediction)
+
+        return loss
