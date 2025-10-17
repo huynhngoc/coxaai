@@ -53,5 +53,6 @@ nvidia-modprobe -u -c=0
 export MAX_SAVE_STEP_GB=0
 export ITER_PER_EPOCH=128
 export NUM_CPUS=4
+export TMPDIR=/home/work
 export RAY_ROOT=$TMPDIR/$USER/ray
-singularity exec --nv deoxys.sif python experiment_multiclass.py $1 $PROJECTS/ngoc/CoxaAI/perf/multi/$2 --temp_folder $SCRATCH_PROJECTS/ceheads/CoxaAI/multi/$2 --epochs $3 ${@:4}
+singularity exec --nv deoxys_2024.sif python experiment_multiclass.py $1 $PROJECTS/ngoc/CoxaAI/perf/multi/$2 --temp_folder $SCRATCH_PROJECTS/ceheads/CoxaAI/multi/$2 --epochs $3 ${@:4}

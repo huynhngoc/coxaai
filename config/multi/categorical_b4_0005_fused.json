@@ -82,10 +82,7 @@
                         "class_name": "BinaryCrossentropy"
                     },
                     {
-                        "class_name": "CategoricalCrossentropy",
-                        "config": {
-                            "from_logits": true
-                        }
+                        "class_name": "CategoricalCrossentropy"
                     }
                 ],
                 "loss_weights": [
@@ -105,10 +102,7 @@
                 "class_name": "AUC"
             },
             {
-                "class_name": "CategoricalCrossentropy",
-                "config": {
-                    "from_logits": true
-                }
+                "class_name": "CategoricalCrossentropy"
             },
             {
                 "class_name": "BinaryCrossentropy"
