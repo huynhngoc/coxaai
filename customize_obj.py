@@ -62,6 +62,15 @@ class EfficientNetModelLoader(BaseModelLoader):
         if pretrained:
             model = efficientNet(include_top=False, classes=num_class,
                                  classifier_activation=activation, input_shape=shape, pooling='avg')
+            if self.options.get('freeze', None) is not None:
+                if self.options['freeze'] == 'all':
+                    for layer in model.layers:
+                        layer.trainable = False
+                elif isinstance(self.options['freeze'], int):
+                    # Freeze all layers except the last `freeze` layers
+                    for layer in model.layers[:-self.options['freeze']]:
+                        layer.trainable = False
+
             dropout_out = Dropout(0.3)(model.output)
             pred = Dense(num_class, activation=activation)(dropout_out)
             model = Model(model.inputs, pred)
