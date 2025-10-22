@@ -3,6 +3,7 @@ from deoxys.loaders.architecture import BaseModelLoader
 from deoxys.data.preprocessor import BasePreprocessor
 from deoxys.utils import deep_copy
 from deoxys.model.losses import loss_from_config, Loss
+from deoxys_image.point_operation import normalize
 
 
 from tensorflow.keras.applications import efficientnet, efficientnet_v2
@@ -156,3 +157,38 @@ class DiffPenalty(Loss):
         class_diff = tf.cast(tf.abs(y_pred_class - y_true_class), prediction.dtype)
 
         return class_diff * class_diff
+
+
+@custom_preprocessor
+class DynamicImageNormalizer(BasePreprocessor):
+    """
+        Normalize all channels to the range of the close interval [0, 1]
+
+        Parameters
+        ----------
+        vmin : int, float, list, tuple, optional.
+            If an int or a float, it will be the lower limits in all channels,
+            else it should be a list of lower values associated with all axes.
+            By default None (choosing the minimum value of
+            each channel in the image batch)
+        vmax : int, float, list, tuple, optional
+            If an int or a float, it will be the upper limits in all channels,
+            else it should be a list of upper values associated with all axes.
+            By default None (choosing the maximum value of
+            each channel in the image batch)
+    """
+
+    def __init__(self, vmin=0.001, vmax=0.999, channel=0):
+        self.vmin = vmin
+        self.vmax = vmax
+        self.channel = channel
+
+    def transform(self, images, targets):
+        transformed_images = images.copy()
+        for i, image in enumerate(images[..., self.channel]):
+            vmin = np.quantile(image, self.vmin)
+            vmax = np.quantile(image, self.vmax)
+
+            transformed_images[i:i+1][..., self.channel] = normalize(images[i:i+1][..., self.channel], vmin, vmax)
+
+        return transformed_images, targets
