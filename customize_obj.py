@@ -178,17 +178,24 @@ class DynamicImageNormalizer(BasePreprocessor):
             each channel in the image batch)
     """
 
-    def __init__(self, vmin=0.001, vmax=0.999, channel=0):
+    def __init__(self, vmin=0.001, vmax=0.999, channel=0, scale_original=False):
         self.vmin = vmin
         self.vmax = vmax
         self.channel = channel
+        self.scale_original = scale_original
 
     def transform(self, images, targets):
         transformed_images = images.copy()
         for i, image in enumerate(images[..., self.channel]):
             vmin = np.quantile(image, self.vmin)
             vmax = np.quantile(image, self.vmax)
+            if self.scale_original:
+                orig_vmin = image.min()
+                orig_vmax = image.max()
 
             transformed_images[i:i+1][..., self.channel] = normalize(images[i:i+1][..., self.channel], vmin, vmax)
+
+            if self.scale_original:
+                transformed_images[i:i+1][..., self.channel] = images[i:i+1][..., self.channel] * (orig_vmax - orig_vmin) + orig_vmin
 
         return transformed_images, targets
