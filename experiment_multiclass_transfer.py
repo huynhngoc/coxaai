@@ -111,7 +111,7 @@ if __name__ == '__main__':
     config = json.load(open(args.config_file))
     config['architecture']['freeze'] = None
     config['model_params']['optimizer']['config']['learning_rate'] = config['model_params']['optimizer']['config']['learning_rate'] / 5
-    weights_file = args.log_folder + '/model/model.030.h5'
+    weights_file = args.log_folder + '/model/model.040.h5'
     exp.from_full_config(config, weights_file=weights_file).run_experiment(
         train_history_log=True,
         model_checkpoint_period=args.model_checkpoint_period,
