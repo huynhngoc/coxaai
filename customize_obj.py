@@ -19,17 +19,17 @@ class EfficientNetModelLoader(BaseModelLoader):
     Create a sequential network from list of layers
     """
     map_name = {
-        'B0': efficientnet.EfficientNetB0,
-        'B1': efficientnet.EfficientNetB1,
-        'B2': efficientnet.EfficientNetB2,
-        'B3': efficientnet.EfficientNetB3,
-        'B4': efficientnet.EfficientNetB4,
-        'B5': efficientnet.EfficientNetB5,
-        'B6': efficientnet.EfficientNetB6,
-        'B7': efficientnet.EfficientNetB7,
-        'S': efficientnet_v2.EfficientNetV2S,
-        'M': efficientnet_v2.EfficientNetV2M,
-        'L': efficientnet_v2.EfficientNetV2L,
+        'B0': efficientnet.EfficientNetB0, # 238
+        'B1': efficientnet.EfficientNetB1, # 340
+        'B2': efficientnet.EfficientNetB2, # 340
+        'B3': efficientnet.EfficientNetB3, # 385
+        'B4': efficientnet.EfficientNetB4, # 475
+        'B5': efficientnet.EfficientNetB5, # 577
+        'B6': efficientnet.EfficientNetB6, # 667
+        'B7': efficientnet.EfficientNetB7, # 814
+        'S': efficientnet_v2.EfficientNetV2S, # 480
+        'M': efficientnet_v2.EfficientNetV2M, # 691
+        'L': efficientnet_v2.EfficientNetV2L, # 957
     }
 
     def __init__(self, architecture, input_params):
