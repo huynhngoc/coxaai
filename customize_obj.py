@@ -196,6 +196,6 @@ class DynamicImageNormalizer(BasePreprocessor):
             transformed_images[i:i+1][..., self.channel] = normalize(images[i:i+1][..., self.channel], vmin, vmax)
 
             if self.scale_original:
-                transformed_images[i:i+1][..., self.channel] = images[i:i+1][..., self.channel] * (orig_vmax - orig_vmin) + orig_vmin
+                transformed_images[i:i+1][..., self.channel] = transformed_images[i:i+1][..., self.channel] * (orig_vmax - orig_vmin) + orig_vmin
 
         return transformed_images, targets
