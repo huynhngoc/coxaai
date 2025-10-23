@@ -101,24 +101,6 @@
                 "config": {
                     "name": "TP"
                 }
-            },
-            {
-                "class_name": "FalsePositives",
-                "config": {
-                    "name": "FP"
-                }
-            },
-            {
-                "class_name": "TrueNegatives",
-                "config": {
-                    "name": "TN"
-                }
-            },
-            {
-                "class_name": "FalseNegatives",
-                "config": {
-                    "name": "FN"
-                }
             }
         ]
     },
