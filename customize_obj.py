@@ -239,7 +239,7 @@ class DynamicImageNormalizer(BasePreprocessor):
 
 @custom_metric
 class AccuracyPerClass(tf.keras.metrics.BinaryAccuracy):
-    def __init__(self, threshold=None, name='acc_class', dtype=None, index=0):
+    def __init__(self, threshold=0.5, name='acc_class', dtype=None, index=0):
         super().__init__(name=name, dtype=dtype, threshold=threshold)
         self.index = index
 
