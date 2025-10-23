@@ -149,9 +149,10 @@
     },
     "architecture": {
         "type": "EfficientNetModelLoader",
-        "num_class": 5,
+        "num_class": 4,
         "pretrained": true,
         "freeze": 200,
+        "activation": "sigmoid",
         "class_name": "B4"
     }
 }
