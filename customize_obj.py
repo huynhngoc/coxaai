@@ -1,8 +1,9 @@
-from deoxys.customize import custom_architecture, custom_preprocessor, custom_loss
+from deoxys.customize import custom_architecture, custom_preprocessor, custom_loss, custom_metric
 from deoxys.loaders.architecture import BaseModelLoader
 from deoxys.data.preprocessor import BasePreprocessor
 from deoxys.utils import deep_copy
 from deoxys.model.losses import loss_from_config, Loss
+from deoxys.model.metrics import Metric
 from deoxys_image.point_operation import normalize
 
 
@@ -112,6 +113,21 @@ class OneHot(BasePreprocessor):
         return images, new_targets
 
 
+@custom_preprocessor
+class CORAL(BasePreprocessor):
+    def __init__(self, num_class=3):
+        self.num_class = num_class
+
+    def transform(self, images, targets):
+        # labels to CORAL encode
+        new_targets = np.zeros((len(targets), self.num_class-1))
+
+        for i in range(self.num_class - 1):
+            new_targets[..., i][targets > i] = 1
+
+        return images, new_targets
+
+
 @custom_loss
 class FusedLoss(Loss):
     """Used to sum two or more loss functions.
@@ -159,6 +175,26 @@ class DiffPenalty(Loss):
         return class_diff * class_diff
 
 
+@custom_loss
+class EMD(Loss):
+    """Earth Mover's Distance Loss for Categorical Data.
+    """
+
+    def __init__(self, reduction="auto", name="emd_loss", regularization='l2'):
+        super().__init__(reduction, name)
+        self.regularization = regularization
+
+    def call(self, target, prediction):
+        cdf_target = tf.cumsum(target, axis=-1)
+        cdf_prediction = tf.cumsum(prediction, axis=-1)
+        if self.regularization == 'l2':
+            emd = tf.sqrt(tf.reduce_mean(tf.square(cdf_target - cdf_prediction), axis=-1))
+        else:
+            emd = tf.reduce_mean(tf.abs(cdf_target - cdf_prediction), axis=-1)
+
+        return emd
+
+
 @custom_preprocessor
 class DynamicImageNormalizer(BasePreprocessor):
     """
@@ -199,3 +235,23 @@ class DynamicImageNormalizer(BasePreprocessor):
                 transformed_images[i:i+1][..., self.channel] = transformed_images[i:i+1][..., self.channel] * (orig_vmax - orig_vmin) + orig_vmin
 
         return transformed_images, targets
+
+
+@custom_metric
+class AccuracyPerClass(tf.keras.metrics.BinaryAccuracy):
+    def __init__(self, threshold=None, name='acc_class', dtype=None, index=0):
+        super().__init__(name=name, dtype=dtype, threshold=threshold)
+        self.index = index
+
+    def update(self, y_true, y_pred):
+        # Update the metric with new predictions
+        super().update_state(y_true[..., self.index], y_pred[..., self.index])
+
+    def result(self):
+        # Compute the final result
+        return super().result()
+
+    def get_config(self):
+        config = {'index': self.index}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))
