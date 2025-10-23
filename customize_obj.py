@@ -200,7 +200,7 @@ class EMD(Loss):
         return emd
 
 
-
+@custom_loss
 class WeightedBinaryCrossEntropy(Loss):
     def __init__(self, label_weights=None, name="weighted_binary_crossentropy"):
         """
