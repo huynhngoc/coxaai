@@ -202,27 +202,27 @@ class EMD(Loss):
 
 @custom_loss
 class WeightedBinaryCrossEntropy(Loss):
-    def __init__(self, label_weights=None, name="weighted_binary_crossentropy"):
+    def __init__(self, weights=None, name="weighted_binary_crossentropy"):
         """
         Custom loss for multi-label classification with per-label weights.
 
         Args:
-            label_weights (list or array): A list or array of shape (num_labels,) with weights for each label.
+            weights (list or array): A list or array of shape (num_labels,) with weights for each label.
         """
         super().__init__(name=name)
-        self.label_weights = label_weights
+        self.weights = weights
 
     def call(self, y_true, y_pred):
         # Clip predictions to avoid log(0)
         y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1 - tf.keras.backend.epsilon())
         # Compute binary crossentropy
         bce = - (y_true * tf.math.log(y_pred) + (1 - y_true) * tf.math.log(1 - y_pred))
-        if self.label_weights is not None:
-            label_weights = tf.constant(self.label_weights, dtype=y_pred.dtype)
+        if self.weights is not None:
+            weights = tf.constant(self.weights, dtype=y_pred.dtype)
         else:
-            label_weights = tf.ones_like(bce)
+            weights = tf.ones_like(bce)
         # Apply label weights
-        weighted_bce = bce * label_weights
+        weighted_bce = bce * weights
         # Return mean loss per sample
         return tf.reduce_mean(weighted_bce, axis=-1)
 
