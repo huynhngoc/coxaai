@@ -243,9 +243,9 @@ class AccuracyPerClass(tf.keras.metrics.BinaryAccuracy):
         super().__init__(name=name, dtype=dtype, threshold=threshold)
         self.index = index
 
-    def update(self, y_true, y_pred):
+    def update_state(self, y_true, y_pred, sample_weight=None):
         # Update the metric with new predictions
-        super().update_state(y_true[..., self.index], y_pred[..., self.index])
+        super().update_state(y_true[..., self.index], y_pred[..., self.index], sample_weight=sample_weight)
 
     def result(self):
         # Compute the final result
