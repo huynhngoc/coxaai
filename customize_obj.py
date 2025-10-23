@@ -180,17 +180,22 @@ class EMD(Loss):
     """Earth Mover's Distance Loss for Categorical Data.
     """
 
-    def __init__(self, reduction="auto", name="emd_loss", regularization='l2'):
+    def __init__(self, reduction="auto", name="emd_loss", regularization='l2', weights=None):
         super().__init__(reduction, name)
         self.regularization = regularization
+        self.weights = weights
 
     def call(self, target, prediction):
         cdf_target = tf.cumsum(target, axis=-1)
         cdf_prediction = tf.cumsum(prediction, axis=-1)
-        if self.regularization == 'l2':
-            emd = tf.sqrt(tf.reduce_mean(tf.square(cdf_target - cdf_prediction), axis=-1))
+        if self.weights is not None:
+            weights = tf.constant(self.weights, dtype=prediction.dtype)
         else:
-            emd = tf.reduce_mean(tf.abs(cdf_target - cdf_prediction), axis=-1)
+            weights = tf.ones_like(cdf_target)
+        if self.regularization == 'l2':
+            emd = tf.sqrt(tf.reduce_mean(weights * tf.square(cdf_target - cdf_prediction), axis=-1))
+        else:
+            emd = tf.reduce_mean(weights * tf.abs(cdf_target - cdf_prediction), axis=-1)
 
         return emd
 
