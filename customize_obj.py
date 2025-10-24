@@ -298,17 +298,23 @@ class DynamicImageNormalizer(BasePreprocessor):
 
     def transform(self, images, targets):
         transformed_images = images.copy()
-        for i, image in enumerate(images[..., self.channel]):
-            vmin = np.quantile(image[..., self.channel] ** self.transformation_vector, self.vmin)
-            vmax = np.quantile(image[..., self.channel] ** self.transformation_vector, self.vmax)
-            if self.scale_original:
-                orig_vmin = image.min()
-                orig_vmax = image.max()
+        # Select the channel and apply transformation
+        channel_data = images[..., self.channel] ** self.transformation_vector
 
-            transformed_images[i:i+1][..., self.channel] = normalize(images[i:i+1][..., self.channel] ** self.transformation_vector, vmin, vmax)
+        # Compute vmin and vmax for each image in the batch
+        vmin = np.quantile(channel_data, self.vmin, axis=(1,2), keepdims=True)
+        vmax = np.quantile(channel_data, self.vmax, axis=(1,2), keepdims=True)
 
-            if self.scale_original:
-                transformed_images[i:i+1][..., self.channel] = transformed_images[i:i+1][..., self.channel] * (orig_vmax - orig_vmin) + orig_vmin
+        # Normalize: (x - vmin) / (vmax - vmin)
+        normalized = (channel_data - vmin) / (vmax - vmin + 1e-8)
+        normalized = np.clip(normalized, 0, 1)
+
+        if self.scale_original:
+            orig_vmin = images[..., self.channel].min(axis=(1,2), keepdims=True)
+            orig_vmax = images[..., self.channel].max(axis=(1,2), keepdims=True)
+            normalized = normalized * (orig_vmax - orig_vmin) + orig_vmin
+
+        transformed_images[..., self.channel] = normalized
 
         return transformed_images, targets
 
