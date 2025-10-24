@@ -231,14 +231,25 @@ class WeightedBinaryCrossEntropy(Loss):
 @custom_loss
 class BinaryMacroFbetaLoss(Loss):
     def __init__(self, reduction='auto', name="binary_macro_fbeta",
-                 beta=1, square=False):
+                 beta=1, square=False, flipped_channels=None):
         super().__init__(reduction, name)
         self.beta = beta
         self.square = square
+        self.flipped_channels = flipped_channels
 
     def call(self, target, prediction):
         eps = 1e-8
         target = tf.cast(target, prediction.dtype)
+
+        if self.flipped_channels is not None:
+            # Create a mask: 1 for channels to flip, 0 for others
+            mask = tf.constant([1 if i in self.flipped_channels else 0 for i in range(prediction.shape[-1])], dtype=prediction.dtype)
+            # Reshape mask for broadcasting
+            mask = tf.reshape(mask, [1] * (len(prediction.shape) - 1) + [prediction.shape[-1]])
+            # Flip channels using mask
+            prediction = prediction * (1 - mask) + (1 - prediction) * mask
+            target = target * (1 - mask) + (1 - target) * mask
+
         # Calculate per channel for the whole batch
         if self.square:
             true_positive = tf.reduce_sum(prediction * target, axis=0)

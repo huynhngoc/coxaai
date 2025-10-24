@@ -75,7 +75,10 @@
     },
     "model_params": {
         "loss": {
-            "class_name": "BinaryMacroFbetaLoss"
+            "class_name": "BinaryMacroFbetaLoss",
+            "config": {
+                "flipped_channels": [0, 1]
+            }
         },
         "optimizer": {
             "class_name": "adam",
