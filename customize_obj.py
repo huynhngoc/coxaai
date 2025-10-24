@@ -228,6 +228,37 @@ class WeightedBinaryCrossEntropy(Loss):
 
 
 
+@custom_loss
+class BinaryMacroFbetaLoss(Loss):
+    def __init__(self, reduction='auto', name="binary_macro_fbeta",
+                 beta=1, square=False):
+        super().__init__(reduction, name)
+        self.beta = beta
+        self.square = square
+
+    def call(self, target, prediction):
+        eps = 1e-8
+        target = tf.cast(target, prediction.dtype)
+        # Calculate per channel for the whole batch
+        if self.square:
+            true_positive = tf.reduce_sum(prediction * target, axis=0)
+            target_positive = tf.reduce_sum(tf.square(target), axis=0)
+            predicted_positive = tf.reduce_sum(tf.square(prediction), axis=0)
+        else:
+            true_positive = tf.reduce_sum(prediction * target, axis=0)
+            target_positive = tf.reduce_sum(target, axis=0)
+            predicted_positive = tf.reduce_sum(prediction, axis=0)
+        fb_numerator = (1 + self.beta ** 2) * true_positive + eps
+        fb_denominator = (
+            (self.beta ** 2) * target_positive + predicted_positive + eps
+        )
+        # Dice/Fbeta score per channel per sample
+        score = fb_numerator / fb_denominator
+        # Return mean over batch and channels (scalar)
+        return tf.reduce_mean(1 - score)
+
+
+
 @custom_preprocessor
 class DynamicImageNormalizer(BasePreprocessor):
     """
