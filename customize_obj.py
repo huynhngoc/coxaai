@@ -289,17 +289,21 @@ class DynamicImageNormalizer(BasePreprocessor):
             each channel in the image batch)
     """
 
-    def __init__(self, vmin=0.001, vmax=0.999, channel=0, scale_original=False, transformation_vector=1):
+    def __init__(self, vmin=0.001, vmax=0.999, channel=0, scale_original=False, transformation_vector=1, func=None):
         self.vmin = vmin
         self.vmax = vmax
         self.channel = channel
         self.scale_original = scale_original
         self.transformation_vector = transformation_vector
+        self.func = func
 
     def transform(self, images, targets):
         transformed_images = images.copy()
         # Select the channel and apply transformation
-        channel_data = images[..., self.channel] ** self.transformation_vector
+        channel_data = transformed_images[..., self.channel] ** self.transformation_vector
+        if self.func is not None:
+            if self.func == 'sin':
+                channel_data = np.sin(np.pi * channel_data / 255)
 
         # Compute vmin and vmax for each image in the batch
         vmin = np.quantile(channel_data, self.vmin, axis=(1,2), keepdims=True)
