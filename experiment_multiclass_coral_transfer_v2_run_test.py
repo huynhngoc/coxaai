@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     def select_class(class_idx):
         def select(targets, predictions):
-            return targets[..., class_idx: class_idx + 1], predictions[..., class_idx: class_idx + 1]
+            return targets[..., class_idx: class_idx + 1], (predictions[..., class_idx: class_idx + 1] > 0.5).astype(targets.dtype)
         return select
 
     # rename old test folder
@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     # logs_df = pd.read_csv(args.log_folder + '/logs.csv')
     # best_epoch = logs_df['epoch'][logs_df['val_loss'].idxmin()] + 1
-    # weights_file = args.log_folder + f'/model/model.{best_epoch}.h5'
+    # weights_file = args.log_folder + f'/model/model.{best_epoch:03d}.h5'
     # with open(args.log_folder + '/new_info.txt', 'w') as f:
     #     f.write(f'Best epoch: {best_epoch:03d} by val_loss\n')
 
@@ -140,7 +140,7 @@ if __name__ == '__main__':
                         {'metric_name': 'AB-CDE'},
                         {'metric_name': 'ABC-DE'},
                         {'metric_name': 'ABCD-E'}]
-    ).plot_performance().load_best_model(
+    ).load_best_model(
         monitor=args.monitor,
         use_raw_log=False,
         mode=args.monitor_mode,
