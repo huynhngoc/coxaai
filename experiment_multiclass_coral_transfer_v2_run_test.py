@@ -40,8 +40,9 @@ except:
 
 
 def metric_avg_score(res_df, postprocessor):
-    res_df['avg_score'] = res_df[['AUC', 'accuracy', 'mcc']].mean(axis=1)
-    return res_df
+    cols = ['accuracy', 'mcc', 'A-BCDE', 'AB-CDE', 'ABC-DE', 'ABCD-E']
+    weights = [1, 1, 1.2, 1.3, 0.8, 0.7]
+    return res_df[cols].mul(weights).sum(axis=1) / sum(weights)
 
 
 if __name__ == '__main__':
@@ -95,25 +96,66 @@ if __name__ == '__main__':
         decoded_prediction = binarize_prediction.argmin(axis=1) + binarize_prediction.min(axis=1) * binarize_prediction.shape[1]
         return targets.sum(axis=1), decoded_prediction
 
+    def select_class(class_idx):
+        def select(targets, predictions):
+            return targets[..., class_idx: class_idx + 1], predictions[..., class_idx: class_idx + 1]
+        return select
+
     # rename old test folder
     os.rename(args.log_folder + '/test', args.log_folder + '/test_old')
+    os.rename(args.log_folder + '/info.txt', args.log_folder + '/info_old.txt')
 
-    logs_df = pd.read_csv(args.log_folder + '/logs.csv')
-    best_epoch = logs_df['epoch'][logs_df['val_loss'].idxmin()] + 1
-    weights_file = args.log_folder + f'/model/model.{best_epoch}.h5'
-    with open(args.log_folder + '/new_info.txt', 'w') as f:
-        f.write(f'Best epoch: {best_epoch:03d} by val_loss\n')
+    # logs_df = pd.read_csv(args.log_folder + '/logs.csv')
+    # best_epoch = logs_df['epoch'][logs_df['val_loss'].idxmin()] + 1
+    # weights_file = args.log_folder + f'/model/model.{best_epoch}.h5'
+    # with open(args.log_folder + '/new_info.txt', 'w') as f:
+    #     f.write(f'Best epoch: {best_epoch:03d} by val_loss\n')
+
+    # exp = DefaultExperimentPipeline(
+    #     log_base_path=args.log_folder,
+    #     temp_base_path=args.temp_folder
+    # ).from_file(weights_file).run_test().apply_post_processors(
+    #     map_meta_data=meta, run_test=True,
+    #     metrics=['AUC', 'roc_auc', 'roc_auc', 'CategoricalCrossentropy',
+    #              'BinaryAccuracy', 'mcc', 'accuracy'],
+    #     metrics_sources=['tf', 'sklearn', 'sklearn',
+    #                      'tf', 'tf', 'sklearn', 'sklearn'],
+    #     process_functions=[None, None, None, None, None, decode, decode],
+    #     metrics_kwargs=[{}, {'metric_name': 'roc_auc_ovr', 'multi_class': 'ovr'},
+    #                     {}, {}, {}, {}, {}]
+    # )
 
     exp = DefaultExperimentPipeline(
         log_base_path=args.log_folder,
         temp_base_path=args.temp_folder
-    ).from_file(weights_file).run_test().apply_post_processors(
-        map_meta_data=meta, run_test=True,
-        metrics=['AUC', 'roc_auc', 'roc_auc', 'CategoricalCrossentropy',
-                 'BinaryAccuracy', 'mcc', 'accuracy'],
+    ).from_file(args.log_folder + f'/model/model.070.h5').apply_post_processors(
+        map_meta_data=meta, run_test=False,
+        metrics=['AUC', 'roc_auc', 'roc_auc', 'BinaryCrossentropy',
+                 'BinaryAccuracy', 'mcc', 'accuracy', 'accuracy', 'accuracy', 'accuracy', 'accuracy'],
         metrics_sources=['tf', 'sklearn', 'sklearn',
-                         'tf', 'tf', 'sklearn', 'sklearn'],
-        process_functions=[None, None, None, None, None, decode, decode],
+                         'tf', 'tf', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn'],
+        process_functions=[None, None, None, None, None, decode, decode, select_class(0), select_class(1), select_class(2), select_class(3)],
         metrics_kwargs=[{}, {'metric_name': 'roc_auc_ovr', 'multi_class': 'ovr'},
-                        {}, {}, {}, {}, {}]
+                        {}, {}, {}, {}, {}, {'metric_name': 'A-BCDE'},
+                        {'metric_name': 'AB-CDE'},
+                        {'metric_name': 'ABC-DE'},
+                        {'metric_name': 'ABCD-E'}]
+    ).plot_performance().load_best_model(
+        monitor=args.monitor,
+        use_raw_log=False,
+        mode=args.monitor_mode,
+        custom_modifier_fn=metric_avg_score
+    ).run_test(
+    ).apply_post_processors(
+        map_meta_data=meta, run_test=True,
+        metrics=['AUC', 'roc_auc', 'roc_auc', 'BinaryCrossentropy',
+                 'BinaryAccuracy', 'mcc', 'accuracy', 'accuracy', 'accuracy', 'accuracy', 'accuracy'],
+        metrics_sources=['tf', 'sklearn', 'sklearn',
+                         'tf', 'tf', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn'],
+        process_functions=[None, None, None, None, None, decode, decode, select_class(0), select_class(1), select_class(2), select_class(3)],
+        metrics_kwargs=[{}, {'metric_name': 'roc_auc_ovr', 'multi_class': 'ovr'},
+                        {}, {}, {}, {}, {}, {'metric_name': 'A-BCDE'},
+                        {'metric_name': 'AB-CDE'},
+                        {'metric_name': 'ABC-DE'},
+                        {'metric_name': 'ABCD-E'}]
     )
