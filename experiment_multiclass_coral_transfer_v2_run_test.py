@@ -42,7 +42,8 @@ except:
 def metric_avg_score(res_df, postprocessor):
     cols = ['accuracy', 'mcc', 'A-BCDE', 'AB-CDE', 'ABC-DE', 'ABCD-E']
     weights = [1, 1, 1.2, 1.3, 0.8, 0.7]
-    return res_df[cols].mul(weights).sum(axis=1) / sum(weights)
+    res_df['avg_score'] = res_df[cols].mul(weights).sum(axis=1) / sum(weights)
+    return res_df
 
 
 if __name__ == '__main__':
@@ -102,8 +103,10 @@ if __name__ == '__main__':
         return select
 
     # rename old test folder
-    os.rename(args.log_folder + '/test', args.log_folder + '/test_old')
-    os.rename(args.log_folder + '/info.txt', args.log_folder + '/info_old.txt')
+    if os.path.exists(args.log_folder + '/test'):
+        os.rename(args.log_folder + '/test', args.log_folder + '/test_old')
+    if os.path.exists(args.log_folder + '/info.txt'):
+        os.rename(args.log_folder + '/info.txt', args.log_folder + '/info_old.txt')
 
     # logs_df = pd.read_csv(args.log_folder + '/logs.csv')
     # best_epoch = logs_df['epoch'][logs_df['val_loss'].idxmin()] + 1

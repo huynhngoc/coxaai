@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --ntasks=1               # 1 core(CPU)
 #SBATCH --nodes=1                # Use 1 node
-#SBATCH --job-name=CoxaAI_pretrain   # sensible name for the job
+#SBATCH --job-name=CoxaAI_test   # sensible name for the job
 #SBATCH --mem=32G                 # Default memory per CPU is 3GB.
 #SBATCH --partition=gpu # Use the verysmallmem-partition for jobs requiring < 10 GB RAM.
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mail-user=ngoc.huynh.bao@nmbu.no # Email me when job is done.
 #SBATCH --mail-type=FAIL
-#SBATCH --output=outputs/pretrain-%A.out
-#SBATCH --error=outputs/pretrain-%A.out
+#SBATCH --output=outputs/test-%A.out
+#SBATCH --error=outputs/test-%A.out
 
 # If you would like to use more please adjust this.
 
