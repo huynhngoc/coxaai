@@ -41,7 +41,7 @@ except:
 
 def metric_avg_score(res_df, postprocessor):
     cols = ['accuracy', 'mcc', 'A-BCDE', 'AB-CDE', 'ABC-DE', 'ABCD-E']
-    weights = [1, 1, 1.2, 1.3, 0.8, 0.7]
+    weights = [1, 1, 1.5, 2, 0.5, 0.3]
     res_df['avg_score'] = res_df[cols].mul(weights).sum(axis=1) / sum(weights)
     return res_df
 
