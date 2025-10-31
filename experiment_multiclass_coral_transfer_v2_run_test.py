@@ -1,6 +1,7 @@
 """
 Run the experiments pipeline
 """
+from datetime import datetime
 import numpy as np
 import customize_obj
 # import h5py
@@ -107,6 +108,9 @@ if __name__ == '__main__':
         os.rename(args.log_folder + '/test', args.log_folder + '/test_old')
     if os.path.exists(args.log_folder + '/info.txt'):
         os.rename(args.log_folder + '/info.txt', args.log_folder + '/info_old.txt')
+    if os.path.exists(args.log_folder + '/log_new.csv'):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.rename(args.log_folder + '/log_new.csv', args.log_folder + f'/log_old.{timestamp}.csv')
 
     # logs_df = pd.read_csv(args.log_folder + '/logs.csv')
     # best_epoch = logs_df['epoch'][logs_df['val_loss'].idxmin()] + 1

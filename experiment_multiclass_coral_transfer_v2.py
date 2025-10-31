@@ -39,7 +39,9 @@ except:
 
 
 def metric_avg_score(res_df, postprocessor):
-    res_df['avg_score'] = res_df[['AUC', 'accuracy', 'mcc']].mean(axis=1)
+    cols = ['accuracy', 'mcc', 'A-BCDE', 'AB-CDE', 'ABC-DE', 'ABCD-E']
+    weights = [1, 1, 1.5, 2, 0.5, 0.3]
+    res_df['avg_score'] = res_df[cols].mul(weights).sum(axis=1) / sum(weights)
     return res_df
 
 
@@ -94,6 +96,11 @@ if __name__ == '__main__':
         decoded_prediction = binarize_prediction.argmin(axis=1) + binarize_prediction.min(axis=1) * binarize_prediction.shape[1]
         return targets.sum(axis=1), decoded_prediction
 
+    def select_class(class_idx):
+        def select(targets, predictions):
+            return targets[..., class_idx: class_idx + 1], (predictions[..., class_idx: class_idx + 1] > 0.5).astype(targets.dtype)
+        return select
+
     exp = DefaultExperimentPipeline(
         log_base_path=args.log_folder,
         temp_base_path=args.temp_folder
@@ -126,13 +133,16 @@ if __name__ == '__main__':
         save_val_inputs=False,
     ).apply_post_processors(
         map_meta_data=meta, run_test=False,
-        metrics=['AUC', 'roc_auc', 'roc_auc', 'CategoricalCrossentropy',
-                 'BinaryAccuracy', 'mcc', 'accuracy'],
+        metrics=['AUC', 'roc_auc', 'roc_auc', 'BinaryCrossentropy',
+                 'BinaryAccuracy', 'mcc', 'accuracy', 'accuracy', 'accuracy', 'accuracy', 'accuracy'],
         metrics_sources=['tf', 'sklearn', 'sklearn',
-                         'tf', 'tf', 'sklearn', 'sklearn'],
-        process_functions=[None, None, None, None, None, decode, decode],
+                         'tf', 'tf', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn'],
+        process_functions=[None, None, None, None, None, decode, decode, select_class(0), select_class(1), select_class(2), select_class(3)],
         metrics_kwargs=[{}, {'metric_name': 'roc_auc_ovr', 'multi_class': 'ovr'},
-                        {}, {}, {}, {}, {}]
+                        {}, {}, {}, {}, {}, {'metric_name': 'A-BCDE'},
+                        {'metric_name': 'AB-CDE'},
+                        {'metric_name': 'ABC-DE'},
+                        {'metric_name': 'ABCD-E'}]
     ).plot_performance().load_best_model(
         monitor=args.monitor,
         use_raw_log=False,
@@ -141,11 +151,14 @@ if __name__ == '__main__':
     ).run_test(
     ).apply_post_processors(
         map_meta_data=meta, run_test=True,
-        metrics=['AUC', 'roc_auc', 'roc_auc', 'CategoricalCrossentropy',
-                 'BinaryAccuracy', 'mcc', 'accuracy'],
+        metrics=['AUC', 'roc_auc', 'roc_auc', 'BinaryCrossentropy',
+                 'BinaryAccuracy', 'mcc', 'accuracy', 'accuracy', 'accuracy', 'accuracy', 'accuracy'],
         metrics_sources=['tf', 'sklearn', 'sklearn',
-                         'tf', 'tf', 'sklearn', 'sklearn'],
-        process_functions=[None, None, None, None, None, decode, decode],
+                         'tf', 'tf', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn', 'sklearn'],
+        process_functions=[None, None, None, None, None, decode, decode, select_class(0), select_class(1), select_class(2), select_class(3)],
         metrics_kwargs=[{}, {'metric_name': 'roc_auc_ovr', 'multi_class': 'ovr'},
-                        {}, {}, {}, {}, {}]
+                        {}, {}, {}, {}, {}, {'metric_name': 'A-BCDE'},
+                        {'metric_name': 'AB-CDE'},
+                        {'metric_name': 'ABC-DE'},
+                        {'metric_name': 'ABCD-E'}]
     )
