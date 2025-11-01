@@ -1,0 +1,176 @@
+{
+    "train_params": {
+        "epochs": 200,
+        "callbacks": []
+    },
+    "dataset_params": {
+        "class_name": "H5Reader",
+        "config": {
+            "filename": "/mnt/project/ngoc/CoxaAI/datasets/hips_800_sort_7_clean.h5",
+            "batch_size": 8,
+            "batch_cache": 8,
+            "x_name": "image",
+            "y_name": "diagnosis",
+            "train_folds": [
+                0,
+                1,
+                2
+            ],
+            "val_folds": [
+                3
+            ],
+            "test_folds": [
+                4
+            ],
+            "shuffle": true,
+            "preprocessors": [
+                {
+                    "class_name": "CORAL",
+                    "config": {
+                        "num_class": 5
+                    }
+                },
+                {
+                    "class_name": "PretrainedEfficientNet",
+                    "config": {}
+                },
+                {
+                    "class_name": "DynamicImageNormalizer",
+                    "config": {
+                        "vmin": 0.0001,
+                        "vmax": 0.9999,
+                        "channel": 1,
+                        "scale_original": true
+                    }
+                },
+                {
+                    "class_name": "DynamicImageNormalizer",
+                    "config": {
+                        "vmin": 0.001,
+                        "vmax": 0.999,
+                        "channel": 2,
+                        "scale_original": true
+                    }
+                }
+            ],
+            "augmentations": [
+                {
+                    "class_name": "ClassImageAugmentation2D",
+                    "config": {
+                        "rotation_range": 15,
+                        "flip_axis": [
+                            0,
+                            1
+                        ],
+                        "zoom_range": [
+                            0.8,
+                            1.2
+                        ],
+                        "shift_range": [
+                            30,
+                            30
+                        ],
+                        "brightness_range": [
+                            0.8,
+                            1.2
+                        ],
+                        "contrast_range": [
+                            0.7,
+                            1.3
+                        ],
+                        "noise_variance": 0.05
+                    }
+                }
+            ]
+        }
+    },
+    "input_params": {
+        "shape": [
+            800,
+            800,
+            3
+        ]
+    },
+    "model_params": {
+        "loss": {
+            "class_name": "BinaryCrossentropy"
+        },
+        "optimizer": {
+            "class_name": "adam",
+            "config": {
+                "learning_rate": 0.0005
+            }
+        },
+        "metrics": [
+            {
+                "class_name": "AUC"
+            },
+            {
+                "class_name": "CategoricalCrossentropy"
+            },
+            {
+                "class_name": "BinaryAccuracy"
+            },
+            {
+                "class_name": "TruePositives",
+                "config": {
+                    "name": "TP"
+                }
+            },
+            {
+                "class_name": "FalsePositives",
+                "config": {
+                    "name": "FP"
+                }
+            },
+            {
+                "class_name": "TrueNegatives",
+                "config": {
+                    "name": "TN"
+                }
+            },
+            {
+                "class_name": "FalseNegatives",
+                "config": {
+                    "name": "FN"
+                }
+            },
+            {
+                "class_name": "AccuracyPerClass",
+                "config": {
+                    "name": "A-BCDE",
+                    "index": 0
+                }
+            },
+            {
+                "class_name": "AccuracyPerClass",
+                "config": {
+                    "name": "AB-CDE",
+                    "index": 1
+                }
+            },
+            {
+                "class_name": "AccuracyPerClass",
+                "config": {
+                    "name": "ABC-DE",
+                    "index": 2
+                }
+            },
+            {
+                "class_name": "AccuracyPerClass",
+                "config": {
+                    "name": "ABCD-E",
+                    "index": 3
+                }
+            }
+        ]
+    },
+    "architecture": {
+        "type": "EfficientNetModelLoader",
+        "num_class": 4,
+        "pretrained": true,
+        "freeze": 100,
+        "activation": "sigmoid",
+        "class_name": "B0"
+    }
+}
