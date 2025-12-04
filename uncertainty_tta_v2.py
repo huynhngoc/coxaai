@@ -134,7 +134,6 @@ if __name__ == '__main__':
             x_augmentation = augment_image(x, preprocessors)  # Apply augmentation to input batch
             tta_pred[..., trial] = model.predict(x_augmentation[0])  # Predict and store results
 
-        print(tta_pred.shape)
         tta_preds.append(tta_pred)  # Store predictions for this batch
 
         i += 1 # increment batch index
@@ -148,7 +147,7 @@ if __name__ == '__main__':
         f.create_dataset('pid', data=pids)
         f.create_dataset('diagnosis', data=diagnosis)
         tta_preds = np.concatenate(tta_preds)  # Combine predictions across batches
-        f.create_dataset('tta_pred', data=np.concatenate(tta_preds))
+        f.create_dataset('tta_pred', data=tta_preds)
     print(f'TTA predictions saved to {base_path}/tta_val_prediction.h5')
 
     # Load patient IDs from the dataset
@@ -191,5 +190,5 @@ if __name__ == '__main__':
         f.create_dataset('pid', data=pids)
         f.create_dataset('diagnosis', data=diagnosis)
         tta_preds = np.concatenate(tta_preds)  # Combine predictions across batches
-        f.create_dataset('tta_pred', data=np.concatenate(tta_preds))
+        f.create_dataset('tta_pred', data=tta_preds)
     print(f'TTA predictions saved to {base_path}/tta_test_prediction.h5')
