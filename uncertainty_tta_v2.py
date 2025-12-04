@@ -134,6 +134,7 @@ if __name__ == '__main__':
             x_augmentation = augment_image(x, preprocessors)  # Apply augmentation to input batch
             tta_pred[..., trial] = model.predict(x_augmentation[0])  # Predict and store results
 
+        print(tta_pred.shape)
         tta_preds.append(tta_pred)  # Store predictions for this batch
 
         i += 1 # increment batch index
