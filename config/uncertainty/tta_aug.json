@@ -3,6 +3,7 @@
         "class_name": "ClassImageAugmentation2D",
         "config": {
             "rotation_range": 15,
+            "rotation_chance": 0.3,
             "flip_axis": [
                 0,
                 1
@@ -11,19 +12,24 @@
                 0.8,
                 1.2
             ],
+            "zoom_chance": 0.4,
             "shift_range": [
                 30,
                 30
             ],
+            "shift_chance": 0.5,
             "brightness_range": [
                 0.8,
                 1.2
             ],
+            "brightness_chance": 0.2,
             "contrast_range": [
                 0.7,
                 1.3
             ],
-            "noise_variance": 0.05
+            "contrast_chance": 0.2,
+            "noise_variance": 0.05,
+            "noise_chance": 0.2
         }
     }
 ]
