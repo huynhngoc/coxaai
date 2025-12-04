@@ -100,7 +100,7 @@ if __name__ == '__main__':
     # Get the trained model and test data generator
     model = best_model.model  # Extract the TensorFlow model from Deoxys pipeline
     dr = best_model.data_reader  # Data reader (handles dataset loading)
-    val_gen = dr.validation_generator  # Validation data generator
+    val_gen = dr.val_generator  # Validation data generator
     val_steps_per_epoch = val_gen.total_batch  # Total number of batches in the validation set
     val_batch_size = val_gen.batch_size  # Batch size used during validation
     test_gen = dr.test_generator  # Test data generator
