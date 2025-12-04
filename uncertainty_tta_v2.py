@@ -109,9 +109,12 @@ if __name__ == '__main__':
 
     # Load patient IDs from the dataset
     pids = []
-    with h5py.File(dr.dataset_filename) as f:
+    diagnosis = []
+    with h5py.File(dr.filename) as f:
         for fold in val_gen.folds:
             pids.append(f[fold][args.meta][:])  # Extract patient IDs from each test fold
+            diagnosis.append(f[fold]['diagnosis'][:])  # Extract diagnosis from each test fold
+    diagnosis = np.concatenate(diagnosis)
     pids = np.concatenate(pids)  # Combine IDs from all folds
 
     # List to store TTA predictions
@@ -142,15 +145,18 @@ if __name__ == '__main__':
     # Convert results into a hdf5 file
     with h5py.File(base_path + f'/tta_val_prediction.h5', 'w') as f:
         f.create_dataset('pid', data=pids)
+        f.create_dataset('diagnosis', data=diagnosis)
         tta_preds = np.concatenate(tta_preds)  # Combine predictions across batches
         f.create_dataset('tta_pred', data=np.concatenate(tta_preds))
     print(f'TTA predictions saved to {base_path}/tta_val_prediction.h5')
 
     # Load patient IDs from the dataset
     pids = []
-    with h5py.File(dr.dataset_filename) as f:
+    with h5py.File(dr.filename) as f:
         for fold in test_gen.folds:
+            diagnosis.append(f[fold]['diagnosis'][:])  # Extract diagnosis from each test fold
             pids.append(f[fold][args.meta][:])  # Extract patient IDs from each test fold
+    diagnosis = np.concatenate(diagnosis)
     pids = np.concatenate(pids)  # Combine IDs from all folds
 
     # List to store TTA predictions
@@ -181,6 +187,7 @@ if __name__ == '__main__':
     # Convert results into a hdf5 file
     with h5py.File(base_path + f'/tta_test_prediction.h5', 'w') as f:
         f.create_dataset('pid', data=pids)
+        f.create_dataset('diagnosis', data=diagnosis)
         tta_preds = np.concatenate(tta_preds)  # Combine predictions across batches
         f.create_dataset('tta_pred', data=np.concatenate(tta_preds))
     print(f'TTA predictions saved to {base_path}/tta_test_prediction.h5')
