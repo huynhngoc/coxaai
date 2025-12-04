@@ -110,7 +110,7 @@ if __name__ == '__main__':
     # Load patient IDs from the dataset
     pids = []
     diagnosis = []
-    with h5py.File(dr.filename) as f:
+    with h5py.File('../datasets/hips_800_sort_7_clean.h5') as f:
         for fold in val_gen.folds:
             pids.append(f[fold][args.meta][:])  # Extract patient IDs from each test fold
             diagnosis.append(f[fold]['diagnosis'][:])  # Extract diagnosis from each test fold
@@ -152,7 +152,8 @@ if __name__ == '__main__':
 
     # Load patient IDs from the dataset
     pids = []
-    with h5py.File(dr.filename) as f:
+    diagnosis = []
+    with h5py.File('../datasets/hips_800_sort_7_clean.h5') as f:
         for fold in test_gen.folds:
             diagnosis.append(f[fold]['diagnosis'][:])  # Extract diagnosis from each test fold
             pids.append(f[fold][args.meta][:])  # Extract patient IDs from each test fold

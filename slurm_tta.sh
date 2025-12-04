@@ -38,4 +38,4 @@ export ITER_PER_EPOCH=128
 export NUM_CPUS=4
 export TMPDIR=/home/work
 export RAY_ROOT=$TMPDIR/$USER/ray
-singularity exec --nv deoxys_2024.sif python uncertainty_tta_v2.py $1 $PROJECTS/ngoc/CoxaAI/perf/transfer_v2/$2 --temp_folder $SCRATCH_PROJECTS/ceheads/CoxaAI/transfer_v2/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
+singularity exec --nv deoxys_2024.sif python -u uncertainty_tta_v2.py $1 $PROJECTS/ngoc/CoxaAI/perf/transfer_v2/$2 --temp_folder $SCRATCH_PROJECTS/ceheads/CoxaAI/transfer_v2/$2 --analysis_folder $SCRATCH_PROJECTS/ngoc/CoxaAI/perf/$2 ${@:3}
