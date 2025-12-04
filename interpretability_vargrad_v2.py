@@ -145,7 +145,7 @@ if __name__ == '__main__':
             x_noised = x + np.stack([noise]*3, axis=-1)
             x_noised = tf.Variable(x_noised)
             tf.random.set_seed(seed)
-            with tf.GradientTape() as tape:
+            with tf.GradientTape(persistent=True) as tape:
                 tape.watch(x_noised)
                 pred = model(x_noised)
             tta_pred[..., trial] = pred.numpy()
@@ -153,7 +153,7 @@ if __name__ == '__main__':
             for i in range(pred.shape[1]):
                 var_grad[keys[i]][..., trial] = tape.gradient(pred[..., i], x_noised).numpy()
             var_grad['all'][..., trial] = tape.gradient(tf.reduce_sum(pred, axis=-1), x_noised).numpy()
-
+            del tape  # Free resources
 
         final_var_grad = {key: (data.std(axis=-1)**2).mean(axis=-1) for key, data in var_grad.items()}
         with h5py.File(args.log_folder + f'/val_vargrad_05.h5', 'a') as f:
