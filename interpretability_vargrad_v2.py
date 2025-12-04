@@ -4,6 +4,7 @@ from deoxys.experiment import DefaultExperimentPipeline
 from deoxys.model import load_model
 import argparse
 import numpy as np
+import os
 import h5py
 import pandas as pd
 from deoxys.data.preprocessor import preprocessor_from_config
@@ -64,6 +65,8 @@ if __name__ == '__main__':
 
     ### Set base path for results based on experiment name
     base_path = '../vargrad/' + args.log_folder.split('/')[-1]
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
     ### Number of iterations
     n_iter = args.iter
 
