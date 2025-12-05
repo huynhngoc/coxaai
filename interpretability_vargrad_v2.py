@@ -139,6 +139,7 @@ if __name__ == '__main__':
 
         # Generate n_iter noisy samples for each image in the batch
         for trial in range(n_iter):
+            gc.collect()
             print(f'Trial {trial+1}/{n_iter}')
             noise = np_random_gen.normal(
                 loc=0.0, scale=.05, size=x.shape[:-1]) * 255
@@ -147,21 +148,23 @@ if __name__ == '__main__':
             tf.random.set_seed(seed)
             with tf.GradientTape(persistent=True) as tape:
                 tape.watch(x_noised)
-                pred = model(x_noised)
+                pred = model(x_noised, training=False)
                 pred_all = tf.reduce_sum(pred, axis=-1)
-                pred_A = tf.subtract(1, pred[..., 0])
-                pred_B = pred[..., 0]
-                pred_C = pred[..., 1]
-                pred_D = pred[..., 2]
-                pred_E = pred[..., 3]
-            tta_pred[..., trial] = pred.numpy()
-            var_grad['A'][..., trial] = tape.gradient(pred_A, x_noised).numpy()
-            var_grad['B'][..., trial] = tape.gradient(pred_B, x_noised).numpy()
-            var_grad['C'][..., trial] = tape.gradient(pred_C, x_noised).numpy()
-            var_grad['D'][..., trial] = tape.gradient(pred_D, x_noised).numpy()
-            var_grad['E'][..., trial] = tape.gradient(pred_E, x_noised).numpy()
-            var_grad['all'][..., trial] = tape.gradient(pred_all, x_noised).numpy()
+                pred_A = tf.reduce_sum(1.0 - pred[:, 0])
+                pred_labels = [tf.reduce_sum(pred[:, k]) for k in range(pred.shape[-1])]
+
+
+            grad_all = tape.gradient(pred_all, x_noised)
+            grad_A   = tape.gradient(pred_A, x_noised)
+
+            # Per-class grads:
+            grads_per_class = [tape.gradient(p, x_noised) for p in pred_labels]
             del tape  # Free resources
+            var_grad['A'][..., trial] = grad_A.numpy()
+            for i in range(4):
+                var_grad[keys[i]][..., trial] = grads_per_class[i].numpy()
+            var_grad['all'][..., trial] = grad_all.numpy()
+            tta_pred[..., trial] = pred.numpy()
 
         final_var_grad = {key: (data.std(axis=-1)**2).mean(axis=-1) for key, data in var_grad.items()}
         with h5py.File(base_path + f'/val_vargrad_05.h5', 'a') as f:
@@ -222,10 +225,11 @@ if __name__ == '__main__':
         np_random_gen = np.random.default_rng(1123)
         new_shape = list(x.shape) + [n_iter]
         var_grad = {key: np.zeros(new_shape) for key in ['A', 'B', 'C', 'D', 'E', 'all']}
-        tta = np.zeros((x.shape[0], 4, n_iter))
+        tta_pred = np.zeros((x.shape[0], 4, n_iter))
 
         # Generate n_iter noisy samples for each image in the batch
         for trial in range(n_iter):
+            gc.collect()
             print(f'Trial {trial+1}/{n_iter}')
             noise = np_random_gen.normal(
                 loc=0.0, scale=.05, size=x.shape[:-1]) * 255
@@ -234,25 +238,28 @@ if __name__ == '__main__':
             tf.random.set_seed(seed)
             with tf.GradientTape(persistent=True) as tape:
                 tape.watch(x_noised)
-                pred = model(x_noised)
+                pred = model(x_noised, training=False)
                 pred_all = tf.reduce_sum(pred, axis=-1)
-                pred_A = tf.subtract(1, pred[..., 0])
-                pred_B = pred[..., 0]
-                pred_C = pred[..., 1]
-                pred_D = pred[..., 2]
-                pred_E = pred[..., 3]
-            tta_pred[..., trial] = pred.numpy()
-            var_grad['A'][..., trial] = tape.gradient(pred_A, x_noised).numpy()
-            var_grad['B'][..., trial] = tape.gradient(pred_B, x_noised).numpy()
-            var_grad['C'][..., trial] = tape.gradient(pred_C, x_noised).numpy()
-            var_grad['D'][..., trial] = tape.gradient(pred_D, x_noised).numpy()
-            var_grad['E'][..., trial] = tape.gradient(pred_E, x_noised).numpy()
-            var_grad['all'][..., trial] = tape.gradient(pred_all, x_noised).numpy()
+                pred_A = tf.reduce_sum(1.0 - pred[:, 0])
+                pred_labels = [tf.reduce_sum(pred[:, k]) for k in range(pred.shape[-1])]
+
+
+            grad_all = tape.gradient(pred_all, x_noised)
+            grad_A   = tape.gradient(pred_A, x_noised)
+
+            # Per-class grads:
+            grads_per_class = [tape.gradient(p, x_noised) for p in pred_labels]
             del tape  # Free resources
+
+            var_grad['A'][..., trial] = grad_A.numpy()
+            for i in range(4):
+                var_grad[keys[i]][..., trial] = grads_per_class[i].numpy()
+            var_grad['all'][..., trial] = grad_all.numpy()
+            tta_pred[..., trial] = pred.numpy()
 
         final_var_grad = {key: (data.std(axis=-1)**2).mean(axis=-1) for key, data in var_grad.items()}
         with h5py.File(base_path + f'/val_vargrad_05.h5', 'a') as f:
-            f['tta_pred'][sub_idx:sub_idx + len(x)] = tta
+            f['tta_pred'][sub_idx:sub_idx + len(x)] = tta_pred
             f['vargrad_A'][sub_idx:sub_idx + len(x)] = final_var_grad['A']
             f['vargrad_B'][sub_idx:sub_idx + len(x)] = final_var_grad['B']
             f['vargrad_C'][sub_idx:sub_idx + len(x)] = final_var_grad['C']
