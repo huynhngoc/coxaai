@@ -161,8 +161,8 @@ if __name__ == '__main__':
             grads_per_class = [tape.gradient(p, x_noised) for p in pred_labels]
             del tape  # Free resources
             var_grad['A'][..., trial] = grad_A.numpy()
-            for i in range(4):
-                var_grad[keys[i]][..., trial] = grads_per_class[i].numpy()
+            for c in range(4):
+                var_grad[keys[c]][..., trial] = grads_per_class[c].numpy()
             var_grad['all'][..., trial] = grad_all.numpy()
             tta_pred[..., trial] = pred.numpy()
 
@@ -195,8 +195,8 @@ if __name__ == '__main__':
     pids = np.concatenate(pids)  # Combine IDs from all folds
 
 
-    with h5py.File(base_path + f'/val_vargrad_05.h5', 'w') as f:
-        print('created file', base_path + f'/val_vargrad_05.h5')
+    with h5py.File(base_path + f'/test_vargrad_05.h5', 'w') as f:
+        print('created file', base_path + f'/test_vargrad_05.h5')
         f.create_dataset('pid', data=pids)
         f.create_dataset('diagnosis', data=diagnosis)
         f.create_dataset('tta_pred', shape=(len(pids), 4, n_iter))
@@ -252,13 +252,13 @@ if __name__ == '__main__':
             del tape  # Free resources
 
             var_grad['A'][..., trial] = grad_A.numpy()
-            for i in range(4):
-                var_grad[keys[i]][..., trial] = grads_per_class[i].numpy()
+            for c in range(4):
+                var_grad[keys[c]][..., trial] = grads_per_class[c].numpy()
             var_grad['all'][..., trial] = grad_all.numpy()
             tta_pred[..., trial] = pred.numpy()
 
         final_var_grad = {key: (data.std(axis=-1)**2).mean(axis=-1) for key, data in var_grad.items()}
-        with h5py.File(base_path + f'/val_vargrad_05.h5', 'a') as f:
+        with h5py.File(base_path + f'/test_vargrad_05.h5', 'a') as f:
             f['tta_pred'][sub_idx:sub_idx + len(x)] = tta_pred
             f['vargrad_A'][sub_idx:sub_idx + len(x)] = final_var_grad['A']
             f['vargrad_B'][sub_idx:sub_idx + len(x)] = final_var_grad['B']
